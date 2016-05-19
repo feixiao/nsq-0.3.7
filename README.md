@@ -1,0 +1,92 @@
+<p align="center">
+<img align="left" width="175" src="http://nsq.io/static/img/nsq_blue.png">
+<ul>
+<li><strong>Source</strong>: https://github.com/nsqio/nsq
+<li><strong>Issues</strong>: https://github.com/nsqio/nsq/issues
+<li><strong>Mailing List</strong>: <a href="https://groups.google.com/d/forum/nsq-users">nsq-users@googlegroups.com</a>
+<li><strong>IRC</strong>: #nsq on freenode
+<li><strong>Docs</strong>: http://nsq.io
+<li><strong>Twitter</strong>: <a href="https://twitter.com/nsqio">@nsqio</a>
+</ul>
+</p>
+
+[![Build Status](https://secure.travis-ci.org/nsqio/nsq.svg?branch=master)](http://travis-ci.org/nsqio/nsq) [![GitHub release](https://img.shields.io/github/release/nsqio/nsq.svg)](https://github.com/nsqio/nsq/releases/latest)
+
+**NSQ** is a realtime distributed messaging platform designed to operate at scale, handling
+billions of messages per day.
+
+It promotes *distributed* and *decentralized* topologies without single points of failure,
+enabling fault tolerance and high availability coupled with a reliable message delivery
+guarantee.  See [features & guarantees][features_guarantees].
+
+Operationally, **NSQ** is easy to configure and deploy (all parameters are specified on the command
+line and compiled binaries have no runtime dependencies). For maximum flexibility, it is agnostic to
+data format (messages can be JSON, MsgPack, Protocol Buffers, or anything else). Official Go and
+Python libraries are available out of the box (as well as many other [client
+libraries][client_libraries]) and, if you're interested in building your own, there's a [protocol
+spec][protocol].
+
+We publish [binary releases][installing] for linux and darwin.
+
+NOTE: master is our *development* branch and may not be stable at all times.
+
+## In Production
+
+<a href="http://bitly.com"><img src="http://nsq.io/static/img/bitly_logo.png" width="84" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://life360.com"><img src="http://nsq.io/static/img/life360_logo.png" width="100" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://hailocab.com"><img src="http://nsq.io/static/img/hailo_logo.png" width="62" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://simplereach.com"><img src="http://nsq.io/static/img/simplereach_logo.png" width="136" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://moz.com"><img src="http://nsq.io/static/img/moz_logo.png" width="108" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://path.com"><img src="http://nsq.io/static/img/path_logo.png" width="84" align="middle"/></a><br/>
+
+<a href="http://segment.io"><img src="http://nsq.io/static/img/segmentio_logo.png" width="70" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://eventful.com"><img src="http://nsq.io/static/img/eventful_logo.png" width="95" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://energyhub.com"><img src="http://nsq.io/static/img/energyhub_logo.png" width="99" align="middle"/></a>&nbsp;&nbsp;
+<a href="https://project-fifo.net"><img src="http://nsq.io/static/img/project_fifo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://trendrr.com"><img src="http://nsq.io/static/img/trendrr_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://reonomy.com"><img src="http://nsq.io/static/img/reonomy_logo.png" width="100" align="middle"/></a><br/>
+
+<a href="http://hw-ops.com"><img src="http://nsq.io/static/img/heavy_water.png" width="50" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://lytics.io"><img src="http://nsq.io/static/img/lytics.png" width="100" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://mediaforge.com"><img src="http://nsq.io/static/img/rakuten.png" width="100" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://socialradar.com"><img src="http://nsq.io/static/img/socialradar_logo.png" width="100" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://wistia.com"><img src="http://nsq.io/static/img/wistia_logo.png" width="140" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://stripe.com"><img src="http://nsq.io/static/img/stripe_logo.png" width="96" align="middle"/></a><br/>
+
+<a href="http://soundest.com"><img src="http://nsq.io/static/img/soundest_logo.png" width="96" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://docker.com"><img src="http://nsq.io/static/img/docker_logo.png" width="100" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://getweave.com"><img src="http://nsq.io/static/img/weave_logo.png" width="94" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://shipwire.com"><img src="http://nsq.io/static/img/shipwire_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://digg.com"><img src="http://nsq.io/static/img/digg_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://scalabull.com"><img src="http://nsq.io/static/img/scalabull_logo.png" width="97" align="middle"/></a><br/>
+
+<a href="http://augury.com"><img src="http://nsq.io/static/img/augury_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://buzzfeed.com"><img src="http://nsq.io/static/img/buzzfeed_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://eztable.com"><img src="http://nsq.io/static/img/eztable_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="http://dotabuff.com"><img src="http://nsq.io/static/img/dotabuff_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="https://fastly.com"><img src="http://nsq.io/static/img/fastly_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+<a href="https://talky.io"><img src="http://nsq.io/static/img/talky_logo.png" width="97" align="middle"/></a><br/>
+
+<a href="https://groupme.com"><img src="http://nsq.io/static/img/groupme_logo.png" width="97" align="middle"/></a>&nbsp;&nbsp;
+
+## Code of Conduct
+
+Help us keep NSQ open and inclusive. Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Authors
+
+NSQ was designed and developed by Matt Reiferson ([@imsnakes][snakes_twitter]) and Jehiah Czebotar
+([@jehiah][jehiah_twitter]) but wouldn't have been possible without the support of
+[bitly][bitly] and all our [contributors][contributors].
+
+Logo created by Wolasi Konu ([@kisalow][wolasi_twitter]).
+
+[protocol]: http://nsq.io/clients/tcp_protocol_spec.html
+[installing]: http://nsq.io/deployment/installing.html
+[snakes_twitter]: https://twitter.com/imsnakes
+[jehiah_twitter]: https://twitter.com/jehiah
+[bitly]: https://bitly.com
+[features_guarantees]: http://nsq.io/overview/features_and_guarantees.html
+[contributors]: https://github.com/nsqio/nsq/graphs/contributors
+[client_libraries]: http://nsq.io/clients/client_libraries.html
+[wolasi_twitter]: https://twitter.com/kisalow

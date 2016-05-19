@@ -1,0 +1,19 @@
+<component name="libraryTable">
+  <library name="GOPATH &lt;nsq-0.3.7&gt;">
+    <CLASSES>
+      <root url="file://D:/gopath/src/dorsvr-master" />
+      <root url="file://D:/gopath/src/mts_back" />
+      <root url="file://D:/gopath/src/mts" />
+      <root url="file://D:/gopath/src/rtspclient" />
+      <root url="file://D:/gopath/src/dahua" />
+      <root url="file://D:/gopath/src/github.com" />
+      <root url="file://D:/gopath/src/vendor" />
+      <root url="file://D:/gopath/src/rtsp" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+    <excluded>
+      <root url="file://$PROJECT_DIR$" />
+    </excluded>
+  </library>
+</component>
