@@ -46,12 +46,12 @@ type NSQD struct {
 
 	opts atomic.Value
 
-	dl        *dirlock.DirLock
+	dl        *dirlock.DirLock  // 文件锁
 	isLoading int32
-	errValue  atomic.Value
-	startTime time.Time
+	errValue  atomic.Value      // 表示健康状况的错误值
+	startTime time.Time         // 启动时间
 
-	// 一个nsqd实例可以有多个Topic
+	// 一个nsqd实例可以有多个Topic,使用sync.RWMutex加锁
 	topicMap map[string]*Topic
 
 	lookupPeers atomic.Value
@@ -63,18 +63,22 @@ type NSQD struct {
 
 	poolSize int
 
+	// 三个channel
 	idChan               chan MessageID
 	notifyChan           chan interface{}
 	optsNotificationChan chan struct{}
 	exitChan             chan int
+
 	waitGroup            util.WaitGroupWrapper
 
 	ci *clusterinfo.ClusterInfo
 }
 
 func New(opts *Options) *NSQD {
+	// 存储数据的目录
 	dataPath := opts.DataPath
 	if opts.DataPath == "" {
+		// 为空就选择当前目录
 		cwd, _ := os.Getwd()
 		dataPath = cwd
 	}
@@ -89,6 +93,7 @@ func New(opts *Options) *NSQD {
 		ci:                   clusterinfo.New(opts.Logger, http_api.NewClient(nil)),
 		dl:                   dirlock.New(dataPath),
 	}
+	// 存储参数
 	n.swapOpts(opts)
 	n.errValue.Store(errStore{})
 
@@ -151,27 +156,29 @@ func (n *NSQD) logf(f string, args ...interface{}) {
 	n.getOpts().Logger.Output(2, fmt.Sprintf(f, args...))
 }
 
+// 获取参数对象
 func (n *NSQD) getOpts() *Options {
 	return n.opts.Load().(*Options)
 }
-
+// 存储参数对象
 func (n *NSQD) swapOpts(opts *Options) {
 	n.opts.Store(opts)
 }
 
+// 作为什么的通知呢
 func (n *NSQD) triggerOptsNotification() {
 	select {
 	case n.optsNotificationChan <- struct{}{}:
 	default:
 	}
 }
-
+// 获取TCP监听的IP和端口
 func (n *NSQD) RealTCPAddr() *net.TCPAddr {
 	n.RLock()
 	defer n.RUnlock()
 	return n.tcpListener.Addr().(*net.TCPAddr)
 }
-
+// 获取HTTP监听的IP和端口
 func (n *NSQD) RealHTTPAddr() *net.TCPAddr {
 	n.RLock()
 	defer n.RUnlock()
@@ -221,9 +228,10 @@ func (n *NSQD) Main() {
 		os.Exit(1)
 	}
 	n.Lock()
-	n.tcpListener = tcpListener
+	n.tcpListener = tcpListener  // 为什么要加锁？
 	n.Unlock()
-	tcpServer := &tcpServer{ctx: ctx}
+	// TCP服务器
+	tcpServer := &tcpServer{ctx: ctx} // 实现了Handle函数
 	n.waitGroup.Wrap(func() {
 		protocol.TCPServer(n.tcpListener, tcpServer, n.getOpts().Logger)
 	})

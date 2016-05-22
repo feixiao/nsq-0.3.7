@@ -411,17 +411,18 @@ func (c *clientV2) SetHeartbeatInterval(desiredInterval int) error {
 
 	return nil
 }
-
+// 设置writer的buffer大小
 func (c *clientV2) SetOutputBufferSize(desiredSize int) error {
 	var size int
 
 	switch {
 	case desiredSize == -1:
-		// effectively no buffer (every write will go directly to the wrapped net.Conn)
+		// 直接使用net.Conn
 		size = 1
 	case desiredSize == 0:
-		// do nothing (use default)
+		// 使用默认值
 	case desiredSize >= 64 && desiredSize <= int(c.ctx.nsqd.getOpts().MaxOutputBufferSize):
+		// 在为64到MaxOutputBufferSize范围()的值
 		size = desiredSize
 	default:
 		return fmt.Errorf("output buffer size (%d) is invalid", desiredSize)
@@ -441,6 +442,7 @@ func (c *clientV2) SetOutputBufferSize(desiredSize int) error {
 	return nil
 }
 
+// 设置buffer flush的超时时间
 func (c *clientV2) SetOutputBufferTimeout(desiredTimeout int) error {
 	c.writeLock.Lock()
 	defer c.writeLock.Unlock()

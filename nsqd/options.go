@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// 参数信息
 type Options struct {
 	// basic options
 	ID                     int64    `flag:"worker-id" cfg:"id"`
