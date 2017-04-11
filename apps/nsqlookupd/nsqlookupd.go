@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/judwhite/go-svc/svc"
+	"github.com/judwhite/go-svc/svc"	// 后台程序
 	"github.com/mreiferson/go-options"
 	"github.com/nsqio/nsq/internal/version"
 	"github.com/nsqio/nsq/nsqlookupd"
 )
 
+// 参数解析
 var (
 	flagSet = flag.NewFlagSet("nsqlookupd", flag.ExitOnError)
 
@@ -25,6 +26,7 @@ var (
 	tcpAddress       = flagSet.String("tcp-address", "0.0.0.0:4160", "<addr>:<port> to listen on for TCP clients")
 	httpAddress      = flagSet.String("http-address", "0.0.0.0:4161", "<addr>:<port> to listen on for HTTP clients")
 	broadcastAddress = flagSet.String("broadcast-address", "", "address of this lookupd node, (default to the OS hostname)")
+
 
 	inactiveProducerTimeout = flagSet.Duration("inactive-producer-timeout", 300*time.Second, "duration of time a producer will remain in the active list since its last ping")
 	tombstoneLifetime       = flagSet.Duration("tombstone-lifetime", 45*time.Second, "duration of time a producer will remain tombstoned if registration remains")

@@ -54,7 +54,7 @@ func (l *NSQLookupd) Main() {
 	l.tcpListener = tcpListener
 	l.Unlock()
 
-	// 创建一个tcpServer tcpServer 实现了nsq/internal/protocol包中的TCPHandler接口
+	// 创建一个tcpServer, tcpServer 实现了nsq/internal/protocol包中的TCPHandler接口( 即Handle(net.Conn) )
 	tcpServer := &tcpServer{ctx: ctx}
 	l.waitGroup.Wrap(func() {
 		// protocol.TCPServer方法的过程就是tcpListener accept tcp的连接
@@ -62,6 +62,8 @@ func (l *NSQLookupd) Main() {
 		protocol.TCPServer(tcpListener, tcpServer, l.opts.Logger)
 	}) // 把tcpServer加入到waitGroup
 
+
+	// http服务
 	httpListener, err := net.Listen("tcp", l.opts.HTTPAddress)
 	if err != nil {
 		l.logf("FATAL: listen (%s) failed - %s", l.opts.HTTPAddress, err)

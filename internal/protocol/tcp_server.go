@@ -32,6 +32,7 @@ func TCPServer(listener net.Listener, handler TCPHandler, l app.Logger) {
 			}
 			break
 		}
+		// TCPHandler接口调用
 		go handler.Handle(clientConn)
 	}
 

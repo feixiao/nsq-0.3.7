@@ -21,6 +21,7 @@ type LookupProtocolV1 struct {
 	ctx *Context	// 一直贯穿整个代码的Context，具体可翻看前面章节
 }
 
+// 协议的主要处理函数
 func (p *LookupProtocolV1) IOLoop(conn net.Conn) error {
 	var err error
 	var line string
@@ -99,6 +100,7 @@ func (p *LookupProtocolV1) Exec(client *ClientV1, reader *bufio.Reader, params [
 	}
 	return nil, protocol.NewFatalClientErr(nil, "E_INVALID", fmt.Sprintf("invalid command %s", params[0]))
 }
+
 // 获取params中的topic 以及 channel
 func getTopicChan(command string, params []string) (string, string, error) {
 	if len(params) == 0 {
@@ -123,35 +125,39 @@ func getTopicChan(command string, params []string) (string, string, error) {
 }
 
 // REGISTER 命令 用于注册client的topic 以及 channel信息
+
 // 一个topic下可以有多个channel
 // 一个消费者订阅的是一个topic 那么 生成者给这个topic 下的channel的信息 这个消费者也能接收得到这个信息，如果消费者订阅的不是这个channel的信息，那么这个消费者则接受不到这个信息
 // nsq topic 与channel的关系，大家可以多搜索下资料，我这里感觉讲的也不太清晰，请大家谅解一下
 // REGISTER 命令必须在INDENTIFY 之后才能调用
+
 // 具体协议报文如下
-// REGISTER topic1\n 这个只创建一个名字为topic1的topic
+// REGISTER topic1\n 		这个只创建一个名字为topic1的topic
 // 或如下报文
-// REGISTER topic1 channel1\n 这个只创建一个名字为topic1的topic 且topic1下面创建一个名字为channel1的channel
+// REGISTER topic1 channel1\n 	这个只创建一个名字为topic1的topic 且topic1下面创建一个名字为channel1的channel
 func (p *LookupProtocolV1) REGISTER(client *ClientV1, reader *bufio.Reader, params []string) ([]byte, error) {
 	if client.peerInfo == nil {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "client must IDENTIFY")
 	}
 
-	// 获取REGISTER 命令时的topic 以及channel名字
+	// 获取REGISTER 命令中的topic 以及channel名字
 	topic, channel, err := getTopicChan("REGISTER", params)
 	if err != nil {
 		return nil, err
 	}
 
 	if channel != "" {
-		// 添加channel信息到RegistrationDB中其中Registration的 Category 为"channel"字符串，Key为topic，SubKey为channel
+		// 生成channel的key：Category 为"channel"字符串，Key为topic，SubKey为channel
 		key := Registration{"channel", topic, channel}
+		// 将生存者添加到这个key中
 		if p.ctx.nsqlookupd.DB.AddProducer(key, &Producer{peerInfo: client.peerInfo}) {
 			p.ctx.nsqlookupd.logf("DB: client(%s) REGISTER category:%s key:%s subkey:%s",
 				client, "channel", topic, channel)
 		}
 	}
-	// 添加topic信息到RegistrationDB中其中Registration的 Category 为"topic"字符串，Key为topic，SubKey为空
+	// 生成topic的key
 	key := Registration{"topic", topic, ""}
+	// 将生存者添加到这个key中
 	if p.ctx.nsqlookupd.DB.AddProducer(key, &Producer{peerInfo: client.peerInfo}) {
 		p.ctx.nsqlookupd.logf("DB: client(%s) REGISTER category:%s key:%s subkey:%s",
 			client, "topic", topic, "")
@@ -162,29 +168,35 @@ func (p *LookupProtocolV1) REGISTER(client *ClientV1, reader *bufio.Reader, para
 
 
 // UNREGISTER命令用于取消注册topic 或取消注册某个topic下的某一个channel
+
 // 报文格式如下
 // UNREGISTER topic1 channel1\n 这个报文表示取消注册名字为topic1的topic下的名字为channel1的channel，这个名字 只取消注册这个channel1，不取消注册topic1下的其他channel 以及这个topic1本身
 // 或这个格式的报文
 // UNREGISTER topic1\n 这个报文表示取消注册名字为topic1的topic，这个时候topic1以及topic1下的所有channel都取消注册了
+
 func (p *LookupProtocolV1) UNREGISTER(client *ClientV1, reader *bufio.Reader, params []string) ([]byte, error) {
 	if client.peerInfo == nil {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "client must IDENTIFY")
 	}
 
-	topic, channel, err := getTopicChan("UNREGISTER", params) // 获取topic 以及channel 的名字
+	// 获取topic 以及channel 的名字
+	topic, channel, err := getTopicChan("UNREGISTER", params)
 	if err != nil {
 		return nil, err
 	}
 
 	if channel != "" {
 		// 如果有channel 则只取消注册这个topic下的这个channel
+		// 生成key
 		key := Registration{"channel", topic, channel}
+		// 移除这个可以下面的端点
 		removed, left := p.ctx.nsqlookupd.DB.RemoveProducer(key, client.peerInfo.id)
 		if removed {
 			p.ctx.nsqlookupd.logf("DB: client(%s) UNREGISTER category:%s key:%s subkey:%s",
 				client, "channel", topic, channel)
 		}
 		// for ephemeral channels, remove the channel as well if it has no producers
+		// 如果没有其他生存者了同时channel名字含有“ephemeral”的缀，那么删除key
 		if left == 0 && strings.HasSuffix(channel, "#ephemeral") {
 			p.ctx.nsqlookupd.DB.RemoveRegistration(key)
 		}
@@ -193,7 +205,10 @@ func (p *LookupProtocolV1) UNREGISTER(client *ClientV1, reader *bufio.Reader, pa
 		// remove all of the channel registrations...
 		// normally this shouldn't happen which is why we print a warning message
 		// if anything is actually removed
-		// 如果没有channel 这个取消注册这个topic 以及这个topic下的所有channel
+
+		// 如果没有channel字段，说明反注册的是整个topic以及这个topic下的所有channel
+
+		// 删除这个topic下的所有channel
 		registrations := p.ctx.nsqlookupd.DB.FindRegistrations("channel", topic, "*")
 		for _, r := range registrations {
 			if removed, _ := p.ctx.nsqlookupd.DB.RemoveProducer(r, client.peerInfo.id); removed {
@@ -201,7 +216,7 @@ func (p *LookupProtocolV1) UNREGISTER(client *ClientV1, reader *bufio.Reader, pa
 					client, "channel", topic, r.SubKey)
 			}
 		}
-
+		// 删除这个topic
 		key := Registration{"topic", topic, ""}
 		if removed, _ := p.ctx.nsqlookupd.DB.RemoveProducer(key, client.peerInfo.id); removed {
 			p.ctx.nsqlookupd.logf("DB: client(%s) UNREGISTER category:%s key:%s subkey:%s",
@@ -212,12 +227,14 @@ func (p *LookupProtocolV1) UNREGISTER(client *ClientV1, reader *bufio.Reader, pa
 	return []byte("OK"), nil
 }
 
-//INDENTIFY命令处理逻辑
+// INDENTIFY命令处理逻辑
+
 // 该命令用于注册client的producer信息，并返回nsqlookupd的TCP 以及 HTTP 端口信息给client
-//大致的报文如下
+// 大致的报文如下
 //  V1 INDENTIFY\n   注意了这里前面提过的V1前面是两个空格字符
-//123\n  这里是后面json数据（producer 信息的json数据的字节长度）
-//{....}\n 一串表示producer信息的json数据，具体的可参考 nsq/nsqlookupd/registration_db.go文件中的PeerInfo struct
+//	123\n  这里是后面json数据（producer 信息的json数据的字节长度）
+//	{....}\n 一串表示producer信息的json数据，具体的可参考 nsq/nsqlookupd/registration_db.go文件中的PeerInfo struct
+
 func (p *LookupProtocolV1) IDENTIFY(client *ClientV1, reader *bufio.Reader, params []string) ([]byte, error) {
 	var err error
 
@@ -261,7 +278,7 @@ func (p *LookupProtocolV1) IDENTIFY(client *ClientV1, reader *bufio.Reader, para
 		client, peerInfo.BroadcastAddress, peerInfo.TCPPort, peerInfo.HTTPPort, peerInfo.Version)
 
 	client.peerInfo = &peerInfo
-	// 注册producer PeerInfo 信息到 RegistrationDB中 其中Registration的 Category 为client Key 和 SubKey为空
+	// 注册producer PeerInfo 信息到 RegistrationDB中，其中Registration的 Category 为client，Key 和 SubKey为空
 	if p.ctx.nsqlookupd.DB.AddProducer(Registration{"client", "", ""}, &Producer{peerInfo: client.peerInfo}) {
 		p.ctx.nsqlookupd.logf("DB: client(%s) REGISTER category:%s key:%s subkey:%s", client, "client", "", "")
 	}
