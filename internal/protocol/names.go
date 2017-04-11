@@ -16,6 +16,9 @@ func IsValidChannelName(name string) bool {
 	return isValidName(name)
 }
 
+
+// 长度范围[1,64]
+// 有数字和字母组成和可选的#ephemeral组成
 func isValidName(name string) bool {
 	if len(name) > 64 || len(name) < 1 {
 		return false

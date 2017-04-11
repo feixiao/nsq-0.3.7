@@ -10,8 +10,9 @@ import (
 	"github.com/nsqio/nsq/internal/app"
 )
 
+// 定义log输出接口
 type logWriter struct {
-	app.Logger
+	app.Logger	// Logger接口
 }
 
 func (l logWriter) Write(p []byte) (int, error) {
@@ -19,6 +20,7 @@ func (l logWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// http服务器，主要参数是监听对象和handler
 func Serve(listener net.Listener, handler http.Handler, proto string, l app.Logger) {
 	l.Output(2, fmt.Sprintf("%s: listening on %s", proto, listener.Addr()))
 
