@@ -56,6 +56,7 @@ type NSQD struct {
 
 	lookupPeers atomic.Value
 
+	// 服务监听对象
 	tcpListener   net.Listener
 	httpListener  net.Listener
 	httpsListener net.Listener
@@ -63,12 +64,13 @@ type NSQD struct {
 
 	poolSize int
 
-	// 三个channel
 	idChan               chan MessageID
 	notifyChan           chan interface{}
 	optsNotificationChan chan struct{}
-	exitChan             chan int
 
+	// 通知整体退出
+	exitChan             chan int
+	// 等待goroutine退出
 	waitGroup            util.WaitGroupWrapper
 
 	ci *clusterinfo.ClusterInfo
@@ -76,13 +78,14 @@ type NSQD struct {
 
 func New(opts *Options) *NSQD {
 	// 存储数据的目录
-	dataPath := opts.DataPath
+	dataPath := opts.DataPath	// 数据持久化的路径
 	if opts.DataPath == "" {
 		// 为空就选择当前目录
 		cwd, _ := os.Getwd()
 		dataPath = cwd
 	}
 
+	// 创建NSQD对象，并初始化参数
 	n := &NSQD{
 		startTime:            time.Now(),
 		topicMap:             make(map[string]*Topic),
@@ -90,24 +93,28 @@ func New(opts *Options) *NSQD {
 		exitChan:             make(chan int),
 		notifyChan:           make(chan interface{}),
 		optsNotificationChan: make(chan struct{}, 1),
-		ci:                   clusterinfo.New(opts.Logger, http_api.NewClient(nil)),
+		ci:                   clusterinfo.New(opts.Logger, http_api.NewClient(nil)),  // log输出接口，http客户端对象
 		dl:                   dirlock.New(dataPath),
 	}
 	// 存储参数
 	n.swapOpts(opts)
 	n.errValue.Store(errStore{})
 
+	// 锁定数据目录（Exit函数中解锁）
 	err := n.dl.Lock()
 	if err != nil {
+		// 失败就退出，说明其他实例在访问
 		n.logf("FATAL: --data-path=%s in use (possibly by another instance of nsqd)", dataPath)
 		os.Exit(1)
 	}
 
+	// MaxDeflateLevel for what ???
 	if opts.MaxDeflateLevel < 1 || opts.MaxDeflateLevel > 9 {
 		n.logf("FATAL: --max-deflate-level must be [1,9]")
 		os.Exit(1)
 	}
 
+	// work-id范围是[0,1024)
 	if opts.ID < 0 || opts.ID >= 1024 {
 		n.logf("FATAL: --worker-id must be [0,1024)")
 		os.Exit(1)
@@ -165,7 +172,7 @@ func (n *NSQD) swapOpts(opts *Options) {
 	n.opts.Store(opts)
 }
 
-// 作为什么的通知呢
+// 作为什么的通知呢?
 func (n *NSQD) triggerOptsNotification() {
 	select {
 	case n.optsNotificationChan <- struct{}{}:
@@ -184,21 +191,24 @@ func (n *NSQD) RealHTTPAddr() *net.TCPAddr {
 	defer n.RUnlock()
 	return n.httpListener.Addr().(*net.TCPAddr)
 }
-
+// 获取HTTPS监听的IP和端口
 func (n *NSQD) RealHTTPSAddr() *net.TCPAddr {
 	n.RLock()
 	defer n.RUnlock()
 	return n.httpsListener.Addr().(*net.TCPAddr)
 }
 
+// 存储最近的错误值
 func (n *NSQD) SetHealth(err error) {
 	n.errValue.Store(errStore{err: err})
 }
 
+// 判断实例是否健康
 func (n *NSQD) IsHealthy() bool {
 	return n.GetError() == nil
 }
 
+// 获取最近的错误值
 func (n *NSQD) GetError() error {
 	errValue := n.errValue.Load()
 	return errValue.(errStore).err
@@ -212,16 +222,20 @@ func (n *NSQD) GetHealth() string {
 	return "OK"
 }
 
+// 获取实例启动的时间
 func (n *NSQD) GetStartTime() time.Time {
 	return n.startTime
 }
 
+// 主业务函数
 func (n *NSQD) Main() {
 	var httpListener net.Listener
 	var httpsListener net.Listener
 
+	// 上下文对象
 	ctx := &context{n}
 
+	// 创建tcp监听对象
 	tcpListener, err := net.Listen("tcp", n.getOpts().TCPAddress)
 	if err != nil {
 		n.logf("FATAL: listen (%s) failed - %s", n.getOpts().TCPAddress, err)
@@ -230,12 +244,14 @@ func (n *NSQD) Main() {
 	n.Lock()
 	n.tcpListener = tcpListener  // 为什么要加锁？
 	n.Unlock()
+
 	// TCP服务器
 	tcpServer := &tcpServer{ctx: ctx} // 实现了Handle函数
 	n.waitGroup.Wrap(func() {
 		protocol.TCPServer(n.tcpListener, tcpServer, n.getOpts().Logger)
 	})
 
+	// HTTP服务器 和 HTTPS服务器
 	if n.tlsConfig != nil && n.getOpts().HTTPSAddress != "" {
 		httpsListener, err = tls.Listen("tcp", n.getOpts().HTTPSAddress, n.tlsConfig)
 		if err != nil {
@@ -263,6 +279,7 @@ func (n *NSQD) Main() {
 		http_api.Serve(n.httpListener, httpServer, "HTTP", n.getOpts().Logger)
 	})
 
+	// 启动四个goroutine处理业务
 	n.waitGroup.Wrap(func() { n.queueScanLoop() })
 	n.waitGroup.Wrap(func() { n.idPump() })
 	n.waitGroup.Wrap(func() { n.lookupLoop() })
@@ -271,24 +288,33 @@ func (n *NSQD) Main() {
 	}
 }
 
+// 载入原数据
 func (n *NSQD) LoadMetadata() {
-	atomic.StoreInt32(&n.isLoading, 1)
-	defer atomic.StoreInt32(&n.isLoading, 0)
+
+	// n.isLoading暗示数据是否在载入过程中
+	atomic.StoreInt32(&n.isLoading, 1)		// 表明数据在载入过程中
+	defer atomic.StoreInt32(&n.isLoading, 0)	// 表明数据完成载入过程
+
+	// 获取数据的完整路径
 	fn := fmt.Sprintf(path.Join(n.getOpts().DataPath, "nsqd.%d.dat"), n.getOpts().ID)
+	// 一次性读取全部的数据
 	data, err := ioutil.ReadFile(fn)
 	if err != nil {
+		// 如果是文件不存在的错误就输出log进行提示
 		if !os.IsNotExist(err) {
 			n.logf("ERROR: failed to read channel metadata from %s - %s", fn, err)
 		}
-		return
+		return	// 其他错误就直接退出（也不说明错误原因的...）
 	}
 
+	// 使用文件中的数据构建Json对象
 	js, err := simplejson.NewJson(data)
 	if err != nil {
 		n.logf("ERROR: failed to parse metadata - %s", err)
 		return
 	}
 
+	// 获取全部的topic
 	topics, err := js.Get("topics").Array()
 	if err != nil {
 		n.logf("ERROR: failed to parse metadata - %s", err)
@@ -342,6 +368,7 @@ func (n *NSQD) LoadMetadata() {
 	}
 }
 
+// 持久化元数据
 func (n *NSQD) PersistMetadata() error {
 	// persist metadata about what topics/channels we have
 	// so that upon restart we can get back to the same state
@@ -350,6 +377,7 @@ func (n *NSQD) PersistMetadata() error {
 
 	js := make(map[string]interface{})
 	topics := []interface{}{}
+	// 遍历map中的全部元素
 	for _, topic := range n.topicMap {
 		if topic.ephemeral {
 			continue
@@ -405,6 +433,8 @@ func (n *NSQD) PersistMetadata() error {
 	return nil
 }
 
+
+// 实例退出处理
 func (n *NSQD) Exit() {
 	if n.tcpListener != nil {
 		n.tcpListener.Close()
@@ -425,16 +455,18 @@ func (n *NSQD) Exit() {
 	}
 	n.logf("NSQ: closing topics")
 	for _, topic := range n.topicMap {
-		topic.Close()
+		topic.Close() // 关闭全部的topic
 	}
 	n.Unlock()
 
 	// we want to do this last as it closes the idPump (if closed first it
 	// could potentially starve items in process and deadlock)
+	// 通知四个goroutine退出
 	close(n.exitChan)
+	// 等待wg对象下面的四个goroutine退出
 	n.waitGroup.Wait()
 
-	n.dl.Unlock()
+	n.dl.Unlock()  // 解锁数据路径
 }
 
 // GetTopic performs a thread safe operation

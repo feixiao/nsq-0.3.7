@@ -23,9 +23,9 @@ type Options struct {
 	AuthHTTPAddresses      []string `flag:"auth-http-address" cfg:"auth_http_addresses"`
 
 	// diskqueue options
-	DataPath        string        `flag:"data-path"`
+	DataPath        string        `flag:"data-path"`		// 持久化数据的路径
 	MemQueueSize    int64         `flag:"mem-queue-size"`
-	MaxBytesPerFile int64         `flag:"max-bytes-per-file"`
+	MaxBytesPerFile int64         `flag:"max-bytes-per-file"`	// 每个文件最大的字节数
 	SyncEvery       int64         `flag:"sync-every"`
 	SyncTimeout     time.Duration `flag:"sync-timeout"`
 
@@ -38,7 +38,7 @@ type Options struct {
 	// msg and command options
 	MsgTimeout    time.Duration `flag:"msg-timeout" arg:"1ms"`
 	MaxMsgTimeout time.Duration `flag:"max-msg-timeout"`
-	MaxMsgSize    int64         `flag:"max-msg-size" deprecated:"max-message-size" cfg:"max_msg_size"`
+	MaxMsgSize    int64         `flag:"max-msg-size" deprecated:"max-message-size" cfg:"max_msg_size"`	// 消息的最大长度
 	MaxBodySize   int64         `flag:"max-body-size"`
 	MaxReqTimeout time.Duration `flag:"max-req-timeout"`
 	ClientTimeout time.Duration

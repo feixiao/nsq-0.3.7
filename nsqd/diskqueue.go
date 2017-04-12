@@ -25,19 +25,19 @@ type diskQueue struct {
 	writePos     int64
 	readFileNum  int64
 	writeFileNum int64
-	depth        int64
+	depth        int64	// 队列的深度？
 
 	sync.RWMutex
 
 	// instantiation time metadata
-	name            string
-	dataPath        string
-	maxBytesPerFile int64 // currently this cannot change once created
-	minMsgSize      int32
-	maxMsgSize      int32
-	syncEvery       int64         // number of writes per fsync
-	syncTimeout     time.Duration // duration of time per fsync
-	exitFlag        int32
+	name            string							// 一般是主题的名字
+	dataPath        string							// 数据保存在磁盘的位置
+	maxBytesPerFile int64 // currently this cannot change once created	// 每个文件的最大大小，一旦创建就不能改变
+	minMsgSize      int32							// 消息的最小长度
+	maxMsgSize      int32							// 消息的最大长度
+	syncEvery       int64         // number of writes per fsync		// 每次同步写的次数？？
+	syncTimeout     time.Duration // duration of time per fsync		// 每次同步的超时？？
+	exitFlag        int32							// 标记是否正在退出
 	needSync        bool
 
 	// keeps track of the position where we have read
@@ -54,12 +54,12 @@ type diskQueue struct {
 	readChan chan []byte
 
 	// internal channels
-	writeChan         chan []byte
-	writeResponseChan chan error
-	emptyChan         chan int
-	emptyResponseChan chan error
-	exitChan          chan int
-	exitSyncChan      chan int
+	writeChan         chan []byte		// 写数据请求通道
+	writeResponseChan chan error		// 返回写操作的结果
+	emptyChan         chan int		// 清空数据请求通道
+	emptyResponseChan chan error		// 清空数据请求回复
+	exitChan          chan int		// 通知相关的goroutine退出
+	exitSyncChan      chan int		// 通知ioLoop已经退出
 
 	logger logger
 }
@@ -71,20 +71,20 @@ func newDiskQueue(name string, dataPath string, maxBytesPerFile int64,
 	syncEvery int64, syncTimeout time.Duration,
 	logger logger) BackendQueue {
 	d := diskQueue{
-		name:              name,
-		dataPath:          dataPath,
-		maxBytesPerFile:   maxBytesPerFile,
-		minMsgSize:        minMsgSize,
-		maxMsgSize:        maxMsgSize,
-		readChan:          make(chan []byte),
-		writeChan:         make(chan []byte),
-		writeResponseChan: make(chan error),
-		emptyChan:         make(chan int),
-		emptyResponseChan: make(chan error),
-		exitChan:          make(chan int),
-		exitSyncChan:      make(chan int),
-		syncEvery:         syncEvery,
-		syncTimeout:       syncTimeout,
+		name:              name,		// 队列的名字，一般是主题的名字
+		dataPath:          dataPath,		// 数据保存的位置
+		maxBytesPerFile:   maxBytesPerFile,	// 每个文件最大的数据量
+		minMsgSize:        minMsgSize,		// 消息的最小长度
+		maxMsgSize:        maxMsgSize,		// 消息的最大长度
+		readChan:          make(chan []byte),	// 想要读取队列的数据关注这个channel皆可
+		writeChan:         make(chan []byte),	// 写数据操作通道
+		writeResponseChan: make(chan error),	// 返回写操作的结果
+		emptyChan:         make(chan int),	// 清空数据请求通道
+		emptyResponseChan: make(chan error),	// 清空数据请求回复
+		exitChan:          make(chan int),	// 通知相关的goroutine退出
+		exitSyncChan:      make(chan int),	// 通知ioLoop已经退出
+		syncEvery:         syncEvery,		// 每次同步写的次数？？
+		syncTimeout:       syncTimeout,		// 每次同步的超时？？
 		logger:            logger,
 	}
 
@@ -94,7 +94,7 @@ func newDiskQueue(name string, dataPath string, maxBytesPerFile int64,
 		d.logf("ERROR: diskqueue(%s) failed to retrieveMetaData - %s", d.name, err)
 	}
 
-	go d.ioLoop()
+	go d.ioLoop()   // 队列的业务主要routine
 
 	return &d
 }
@@ -112,11 +112,13 @@ func (d *diskQueue) Depth() int64 {
 }
 
 // ReadChan returns the []byte channel for reading data
+// 想要读取队列的数据关注这个channel皆可
 func (d *diskQueue) ReadChan() chan []byte {
 	return d.readChan
 }
 
 // Put writes a []byte to the queue
+// 将数据写入队列
 func (d *diskQueue) Put(data []byte) error {
 	d.RLock()
 	defer d.RUnlock()
@@ -125,39 +127,48 @@ func (d *diskQueue) Put(data []byte) error {
 		return errors.New("exiting")
 	}
 
+	// 写数据的方式通过channel完成，通过writeResponseChan返回结果（在ioLoop中完成）
 	d.writeChan <- data
 	return <-d.writeResponseChan
 }
 
 // Close cleans up the queue and persists metadata
+// 关闭、清理队列和持久化元数据
 func (d *diskQueue) Close() error {
-	err := d.exit(false)
+	err := d.exit(false)	// 参数只影响日志输出，关闭还是删除
 	if err != nil {
 		return err
 	}
 	return d.sync()
 }
 
+// 删除(关闭读写文件)
 func (d *diskQueue) Delete() error {
 	return d.exit(true)
 }
 
+// 退出处理
 func (d *diskQueue) exit(deleted bool) error {
 	d.Lock()
 	defer d.Unlock()
 
+	// 标记正在退出中
 	d.exitFlag = 1
 
+	// 是否删除数据
 	if deleted {
 		d.logf("DISKQUEUE(%s): deleting", d.name)
 	} else {
 		d.logf("DISKQUEUE(%s): closing", d.name)
 	}
 
+	// 通知goroutine退出
 	close(d.exitChan)
 	// ensure that ioLoop has exited
+	// 确保ioLoop退出
 	<-d.exitSyncChan
 
+	// 关闭读写文件
 	if d.readFile != nil {
 		d.readFile.Close()
 		d.readFile = nil
@@ -183,13 +194,16 @@ func (d *diskQueue) Empty() error {
 
 	d.logf("DISKQUEUE(%s): emptying", d.name)
 
+	// 发送数据清空数据的请求，由ioLoop处理
 	d.emptyChan <- 1
 	return <-d.emptyResponseChan
 }
 
+// 删除全部文件
 func (d *diskQueue) deleteAllFiles() error {
-	err := d.skipToNextRWFile()
+	err := d.skipToNextRWFile()	// 删除全部的文件
 
+	// 删除全部的元数据文件（就一个）
 	innerErr := os.Remove(d.metaDataFileName())
 	if innerErr != nil && !os.IsNotExist(innerErr) {
 		d.logf("ERROR: diskqueue(%s) failed to remove metadata file - %s", d.name, innerErr)
@@ -199,9 +213,11 @@ func (d *diskQueue) deleteAllFiles() error {
 	return err
 }
 
+// 删除全部的数据文件，并调整文件读写的编号
 func (d *diskQueue) skipToNextRWFile() error {
 	var err error
 
+	// 关闭读写文件
 	if d.readFile != nil {
 		d.readFile.Close()
 		d.readFile = nil
@@ -213,7 +229,9 @@ func (d *diskQueue) skipToNextRWFile() error {
 	}
 
 	for i := d.readFileNum; i <= d.writeFileNum; i++ {
+		// 获取文件的完整名字
 		fn := d.fileName(i)
+		// 删除
 		innerErr := os.Remove(fn)
 		if innerErr != nil && !os.IsNotExist(innerErr) {
 			d.logf("ERROR: diskqueue(%s) failed to remove data file - %s", d.name, innerErr)
@@ -378,8 +396,10 @@ func (d *diskQueue) writeOne(data []byte) error {
 }
 
 // sync fsyncs the current writeFile and persists metadata
+// 数据同步
 func (d *diskQueue) sync() error {
 	if d.writeFile != nil {
+		// 如果文件没有被关闭就同步文件（内存数据刷到磁盘），然后关闭
 		err := d.writeFile.Sync()
 		if err != nil {
 			d.writeFile.Close()
@@ -388,6 +408,7 @@ func (d *diskQueue) sync() error {
 		}
 	}
 
+	// 持久化元数据
 	err := d.persistMetaData()
 	if err != nil {
 		return err
@@ -425,11 +446,14 @@ func (d *diskQueue) retrieveMetaData() error {
 }
 
 // persistMetaData atomically writes state to the filesystem
+// 持久化元数据
 func (d *diskQueue) persistMetaData() error {
 	var f *os.File
 	var err error
 
+	// 获取元数据文件路径和名字
 	fileName := d.metaDataFileName()
+	// 临时文件
 	tmpFileName := fmt.Sprintf("%s.%d.tmp", fileName, rand.Int())
 
 	// write to tmp file
@@ -438,25 +462,31 @@ func (d *diskQueue) persistMetaData() error {
 		return err
 	}
 
+	// 将元数据信息写到临时文件
 	_, err = fmt.Fprintf(f, "%d\n%d,%d\n%d,%d\n",
 		atomic.LoadInt64(&d.depth),
 		d.readFileNum, d.readPos,
 		d.writeFileNum, d.writePos)
+
 	if err != nil {
 		f.Close()
 		return err
 	}
+	// 同步和关闭文件
 	f.Sync()
 	f.Close()
 
 	// atomically rename
+	// 用临时文件替换之前的文件
 	return atomicRename(tmpFileName, fileName)
 }
 
+// 获取元数据文件路径和名字
 func (d *diskQueue) metaDataFileName() string {
 	return fmt.Sprintf(path.Join(d.dataPath, "%s.diskqueue.meta.dat"), d.name)
 }
 
+// 获取文件名字
 func (d *diskQueue) fileName(fileNum int64) string {
 	return fmt.Sprintf(path.Join(d.dataPath, "%s.diskqueue.%06d.dat"), d.name, fileNum)
 }
@@ -609,10 +639,10 @@ func (d *diskQueue) ioLoop() {
 		case r <- dataRead:
 			// moveForward sets needSync flag if a file is removed
 			d.moveForward()
-		case <-d.emptyChan:
+		case <-d.emptyChan:		// 清空数据
 			d.emptyResponseChan <- d.deleteAllFiles()
 			count = 0
-		case dataWrite := <-d.writeChan:
+		case dataWrite := <-d.writeChan:	// 处理写数据
 			count++
 			d.writeResponseChan <- d.writeOne(dataWrite)
 		case <-syncTicker.C:

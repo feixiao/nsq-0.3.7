@@ -16,24 +16,34 @@ type Topic struct {
 	messageCount uint64
 
 	sync.RWMutex
-
+	// topic的名字
 	name              string
 	// 一个Topic实例下有多个Channel
 	channelMap        map[string]*Channel
+	// 队列
 	backend           BackendQueue
 
 	// 如果想要往该topic发布消息，只需要将消息写到Topic.memoryMsgChan中
 	// 创建Topic时会开启一个新的goroutine(messagePump)负责监听Topic.memoryMsgChan，当有新消息时会将将消息复制N份发送到该Topic下的所有Channel中
 	memoryMsgChan     chan *Message
+
+	// 通知相关的goroutine退出
 	exitChan          chan int
+
 	channelUpdateChan chan int
+	// 等待全部的goroutine退出
 	waitGroup         util.WaitGroupWrapper
+
+	// for what ？？
 	exitFlag          int32
 
-	ephemeral      bool
+	ephemeral      bool			// 临时？？？
+
+	// 删除topic的回调
 	deleteCallback func(*Topic)
 	deleter        sync.Once
 
+	// for what ???
 	paused    int32
 	pauseChan chan bool
 
@@ -41,6 +51,7 @@ type Topic struct {
 }
 
 // Topic constructor
+// 创建Topic对象（主题名字、上下文对象(NSQD)、删除主题回调对象）
 func NewTopic(topicName string, ctx *context, deleteCallback func(*Topic)) *Topic {
 	t := &Topic{
 		name:              topicName,
@@ -55,15 +66,22 @@ func NewTopic(topicName string, ctx *context, deleteCallback func(*Topic)) *Topi
 		deleteCallback:    deleteCallback,
 	}
 
+	/*
+		Note, a topic/channel whose name ends in the string #ephemeral will not be buffered to disk and will instead drop messages after passing the mem-queue-size.
+		This enables consumers which do not need message guarantees to subscribe to a channel.These ephemeral channels will also disappear after its last client disconnects.
+	*/
 	if strings.HasSuffix(topicName, "#ephemeral") {
+		// http://nsq.io/overview/design.html
+		// 名字含有“#ephemeral”结尾的主题，数据不想要保存到磁盘，
 		t.ephemeral = true
 		t.backend = newDummyBackendQueue()
 	} else {
+		// 名字不含有“#ephemeral”结尾，我们需要持久化到磁盘
 		t.backend = newDiskQueue(topicName,
 			ctx.nsqd.getOpts().DataPath,
 			ctx.nsqd.getOpts().MaxBytesPerFile,
 			int32(minValidMsgLength),
-			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength,
+			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength,	// 大小为什么是这样的需要分析message结构
 			ctx.nsqd.getOpts().SyncEvery,
 			ctx.nsqd.getOpts().SyncTimeout,
 			ctx.nsqd.getOpts().Logger)
