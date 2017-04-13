@@ -56,10 +56,10 @@ type diskQueue struct {
 	// internal channels
 	writeChan         chan []byte		// 写数据请求通道
 	writeResponseChan chan error		// 返回写操作的结果
-	emptyChan         chan int			// 清空数据请求通道
+	emptyChan         chan int		// 清空数据请求通道
 	emptyResponseChan chan error		// 清空数据请求回复
-	exitChan          chan int			// 通知相关的goroutine退出
-	exitSyncChan      chan int			// 通知ioLoop已经退出
+	exitChan          chan int		// 通知相关的goroutine退出
+	exitSyncChan      chan int		// 通知ioLoop已经退出
 
 	logger logger
 }
@@ -71,16 +71,16 @@ func newDiskQueue(name string, dataPath string, maxBytesPerFile int64,
 	syncEvery int64, syncTimeout time.Duration,
 	logger logger) BackendQueue {
 	d := diskQueue{
-		name:              name,				// 队列的名字，一般是主题的名字
+		name:              name,			// 队列的名字，一般是主题的名字
 		dataPath:          dataPath,			// 数据保存的位置
 		maxBytesPerFile:   maxBytesPerFile,		// 每个文件最大的数据量
 		minMsgSize:        minMsgSize,			// 消息的最小长度
 		maxMsgSize:        maxMsgSize,			// 消息的最大长度
-		readChan:          make(chan []byte),	// 想要读取队列的数据关注这个channel皆可
-		writeChan:         make(chan []byte),	// 写数据操作通道
-		writeResponseChan: make(chan error),	// 返回写操作的结果
+		readChan:          make(chan []byte),		// 想要读取队列的数据关注这个channel皆可
+		writeChan:         make(chan []byte),		// 写数据操作通道
+		writeResponseChan: make(chan error),		// 返回写操作的结果
 		emptyChan:         make(chan int),		// 清空数据请求通道
-		emptyResponseChan: make(chan error),	// 清空数据请求回复
+		emptyResponseChan: make(chan error),		// 清空数据请求回复
 		exitChan:          make(chan int),		// 通知相关的goroutine退出
 		exitSyncChan:      make(chan int),		// 通知ioLoop已经退出
 		syncEvery:         syncEvery,			// 每次同步写的次数？？
@@ -519,7 +519,7 @@ func (d *diskQueue) fileName(fileNum int64) string {
 	return fmt.Sprintf(path.Join(d.dataPath, "%s.diskqueue.%06d.dat"), d.name, fileNum)
 }
 
-// 函数检查文件是否有错（自己修复）
+// 函数检查文件是否有错
 func (d *diskQueue) checkTailCorruption(depth int64) {
 	if d.readFileNum < d.writeFileNum || d.readPos < d.writePos {
 		return
@@ -538,10 +538,12 @@ func (d *diskQueue) checkTailCorruption(depth int64) {
 				d.name, depth)
 		}
 		// force set depth 0
+		// 当depth不为0的时候强制设置位0，并标记为需要同步
 		atomic.StoreInt64(&d.depth, 0)
 		d.needSync = true
 	}
 
+	// 文件不是最新的，那么我们切换为新文件
 	if d.readFileNum != d.writeFileNum || d.readPos != d.writePos {
 		if d.readFileNum > d.writeFileNum {
 			d.logf(
@@ -554,7 +556,7 @@ func (d *diskQueue) checkTailCorruption(depth int64) {
 				"ERROR: diskqueue(%s) readPos > writePos (%d > %d), corruption, skipping to next writeFileNum and resetting 0...",
 				d.name, d.readPos, d.writePos)
 		}
-
+		
 		d.skipToNextRWFile()
 		d.needSync = true
 	}
