@@ -14,7 +14,7 @@ import (
 type Options struct {
 	// basic options
 	ID                     int64    `flag:"worker-id" cfg:"id"`
-	Verbose                bool     `flag:"verbose"`
+	Verbose                bool     `flag:"verbose"`		// 详细的日志输出
 	TCPAddress             string   `flag:"tcp-address"`
 	HTTPAddress            string   `flag:"http-address"`
 	HTTPSAddress           string   `flag:"https-address"`
@@ -39,7 +39,7 @@ type Options struct {
 	MsgTimeout    time.Duration `flag:"msg-timeout" arg:"1ms"`
 	MaxMsgTimeout time.Duration `flag:"max-msg-timeout"`
 	MaxMsgSize    int64         `flag:"max-msg-size" deprecated:"max-message-size" cfg:"max_msg_size"`	// 消息的最大长度
-	MaxBodySize   int64         `flag:"max-body-size"`
+	MaxBodySize   int64         `flag:"max-body-size"`													// 消息体的最大长度
 	MaxReqTimeout time.Duration `flag:"max-req-timeout"`
 	ClientTimeout time.Duration
 

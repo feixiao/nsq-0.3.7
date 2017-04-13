@@ -24,6 +24,7 @@ const (
 	stateClosing
 )
 
+// 客户端认证上传的数据
 type identifyDataV2 struct {
 	ShortID string `json:"short_id"` // TODO: deprecated, remove in 1.0
 	LongID  string `json:"long_id"`  // TODO: deprecated, remove in 1.0
@@ -102,8 +103,8 @@ type clientV2 struct {
 	Deflate int32
 
 	// re-usable buffer for reading the 4-byte lengths off the wire
-	lenBuf   [4]byte
-	lenSlice []byte
+	lenBuf   [4]byte	// [ 4-byte size in bytes ] 即消息体中前面四个字节表示消息长度（不包括这四个字节的长度）
+	lenSlice []byte		// 将上面lenBuf数组以切片的形式操作
 
 	AuthSecret string
 	AuthState  *auth.State

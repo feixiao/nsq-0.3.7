@@ -40,14 +40,14 @@ func (p *protocolV2) IOLoop(conn net.Conn) error {
 	var zeroTime time.Time
 
 	clientID := atomic.AddInt64(&p.ctx.nsqd.clientIDSequence, 1)
-	// 创建一个新的Client对象
+	// 创建一个新的Client对象(处理数据的工作交给了clientV2)
 	client := newClientV2(clientID, conn, p.ctx)
 
-	//开启另一个goroutine，定时发送心跳信息，客户端收到心跳信息后要回复。
-	//如果nsqd长时间未收到该连接的心跳回复说明连接已出问题，会断开连接，这就是nsq的心跳实现机制
+	// 开启另一个goroutine，定时发送心跳信息，客户端收到心跳信息后要回复。
+	// 如果nsqd长时间未收到该连接的心跳回复说明连接已出问题，会断开连接，这就是nsq的心跳实现机制
 	messagePumpStartedChan := make(chan bool)
 	go p.messagePump(client, messagePumpStartedChan)
-	<-messagePumpStartedChan
+	<-messagePumpStartedChan // 确保messagePump已经运行才继续往下走
 
 
 	for {
@@ -90,6 +90,7 @@ func (p *protocolV2) IOLoop(conn net.Conn) error {
 		var response []byte
 		response, err = p.Exec(client, params)
 		if err != nil {
+			// 处理命令发生错误
 			ctx := ""
 			if parentErr := err.(protocol.ChildErr).Parent(); parentErr != nil {
 				ctx = " - " + parentErr.Error()
@@ -122,7 +123,7 @@ func (p *protocolV2) IOLoop(conn net.Conn) error {
 	conn.Close()
 	close(client.ExitChan)
 
-	//client.Channel记录的是该客户端订阅的Channel,客户端关闭的时候需要从Channel中移除这个订阅者。
+	// client.Channel记录的是该客户端订阅的Channel,客户端关闭的时候需要从Channel中移除这个订阅者。
 	if client.Channel != nil {
 		client.Channel.RemoveClient(client.ID)
 	}
@@ -130,6 +131,7 @@ func (p *protocolV2) IOLoop(conn net.Conn) error {
 	return err
 }
 
+// 将msg发送给客户端，buf为了减少不必要的bytes.Buffer分配
 func (p *protocolV2) SendMessage(client *clientV2, msg *Message, buf *bytes.Buffer) error {
 	if p.ctx.nsqd.getOpts().Verbose {
 		p.ctx.nsqd.logf("PROTOCOL(V2): writing msg(%s) to client(%s) - %s",
@@ -150,9 +152,11 @@ func (p *protocolV2) SendMessage(client *clientV2, msg *Message, buf *bytes.Buff
 	return nil
 }
 
+// 发送给客户端响应
 func (p *protocolV2) Send(client *clientV2, frameType int32, data []byte) error {
 	client.writeLock.Lock()
 
+	// 设置写超时
 	var zeroTime time.Time
 	if client.HeartbeatInterval > 0 {
 		// 设置连接的超时时间net包中，Conn的函数
@@ -168,6 +172,7 @@ func (p *protocolV2) Send(client *clientV2, frameType int32, data []byte) error 
 	}
 
 	if frameType != frameTypeMessage {
+		// 如果不算Mesaage就刷新一边。保证数据全部发送出去
 		err = client.Flush()
 	}
 
@@ -176,6 +181,8 @@ func (p *protocolV2) Send(client *clientV2, frameType int32, data []byte) error 
 	return err
 }
 
+// http://nsq.io/clients/tcp_protocol_spec.html
+// 处理协议中的命令
 func (p *protocolV2) Exec(client *clientV2, params [][]byte) ([]byte, error) {
 	if bytes.Equal(params[0], []byte("IDENTIFY")) {
 		return p.IDENTIFY(client, params)
@@ -211,6 +218,7 @@ func (p *protocolV2) Exec(client *clientV2, params [][]byte) ([]byte, error) {
 	return nil, protocol.NewFatalClientErr(nil, "E_INVALID", fmt.Sprintf("invalid command %s", params[0]))
 }
 
+// 消息泵
 func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 	var err error
 	var buf bytes.Buffer
@@ -353,28 +361,34 @@ exit:
 	}
 }
 
+// IDENTIFY ： Update client metadata on the server and negotiate features
 func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error) {
 	var err error
 
+	// 如果客户端不是stateInit状态直接返回错误
 	if atomic.LoadInt32(&client.State) != stateInit {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot IDENTIFY in current state")
 	}
 
+	// 读取前面四个字节，并获取消息的长度
 	bodyLen, err := readLen(client.Reader, client.lenSlice)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "IDENTIFY failed to read body size")
 	}
 
+	// 如果消息体的最大长度超过最大的消息体的长度,则返回错误
 	if int64(bodyLen) > p.ctx.nsqd.getOpts().MaxBodySize {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_BODY",
 			fmt.Sprintf("IDENTIFY body too big %d > %d", bodyLen, p.ctx.nsqd.getOpts().MaxBodySize))
 	}
 
+	// 如果长度小于0也是错误数据
 	if bodyLen <= 0 {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_BODY",
 			fmt.Sprintf("IDENTIFY invalid body size %d", bodyLen))
 	}
 
+	// 获取消息体数据
 	body := make([]byte, bodyLen)
 	_, err = io.ReadFull(client.Reader, body)
 	if err != nil {
@@ -382,6 +396,7 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 	}
 
 	// body is a json structure with producer information
+	// 因为是json数据，我们Unmarshal到结构体
 	var identifyData identifyDataV2
 	err = json.Unmarshal(body, &identifyData)
 	if err != nil {
@@ -983,6 +998,7 @@ func getMessageID(p []byte) (*MessageID, error) {
 	return (*MessageID)(unsafe.Pointer(&p[0])), nil
 }
 
+// 读取前面四个字节，并获取消息的长度
 func readLen(r io.Reader, tmp []byte) (int32, error) {
 	_, err := io.ReadFull(r, tmp)
 	if err != nil {
