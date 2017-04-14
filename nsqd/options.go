@@ -44,9 +44,9 @@ type Options struct {
 	ClientTimeout time.Duration
 
 	// client overridable configuration options
-	MaxHeartbeatInterval   time.Duration `flag:"max-heartbeat-interval"`
+	MaxHeartbeatInterval   time.Duration `flag:"max-heartbeat-interval"`					// 心跳超时
 	MaxRdyCount            int64         `flag:"max-rdy-count"`
-	MaxOutputBufferSize    int64         `flag:"max-output-buffer-size"`
+	MaxOutputBufferSize    int64         `flag:"max-output-buffer-size"`					// tcp writer对象的缓存
 	MaxOutputBufferTimeout time.Duration `flag:"max-output-buffer-timeout"`
 
 	// statsd integration

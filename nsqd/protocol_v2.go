@@ -172,7 +172,7 @@ func (p *protocolV2) Send(client *clientV2, frameType int32, data []byte) error 
 	}
 
 	if frameType != frameTypeMessage {
-		// 如果不算Mesaage就刷新一边。保证数据全部发送出去
+		// 如果不是Mesaage就刷新一边。保证数据全部发送出去
 		err = client.Flush()
 	}
 
@@ -191,6 +191,8 @@ func (p *protocolV2) Exec(client *clientV2, params [][]byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 处理不同的命令，clientV2完成具体的工作
 	switch {
 	case bytes.Equal(params[0], []byte("FIN")):
 		return p.FIN(client, params)
@@ -302,6 +304,7 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 			subEventChan = nil
 		case identifyData := <-identifyEventChan:
 			// you can't IDENTIFY anymore
+			// 只能认证一次
 			identifyEventChan = nil
 
 			outputBufferTicker.Stop()
@@ -407,6 +410,7 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 		p.ctx.nsqd.logf("PROTOCOL(V2): [%s] %+v", client, identifyData)
 	}
 
+	// client对象处理Identify
 	err = client.Identify(identifyData)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "IDENTIFY "+err.Error())

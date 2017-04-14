@@ -16,6 +16,7 @@ import (
 
 const defaultBufferSize = 16 * 1024
 
+// 状态
 const (
 	stateInit = iota
 	stateDisconnected
@@ -44,6 +45,7 @@ type identifyDataV2 struct {
 	MsgTimeout          int    `json:"msg_timeout"`
 }
 
+// 认证事件
 type identifyEvent struct {
 	OutputBufferTimeout time.Duration
 	HeartbeatInterval   time.Duration
@@ -62,20 +64,20 @@ type clientV2 struct {
 	writeLock sync.RWMutex
 	metaLock  sync.RWMutex
 
-	ID        int64
-	ctx       *context
+	ID        int64				// 客户端id
+	ctx       *context			// 上下文对象，这里指NSQD
 	UserAgent string
 
 	// original connection
-	net.Conn
+	net.Conn					// 继承net.Conn
 
 	// connections based on negotiated features
 	tlsConn     *tls.Conn
 	flateWriter *flate.Writer
 
 	// reading/writing interfaces
-	Reader *bufio.Reader
-	Writer *bufio.Writer
+	Reader *bufio.Reader		// 将net.Conn封装为Reader对象
+	Writer *bufio.Writer		// 将net.Conn封装为Writer对象
 
 	OutputBufferSize    int
 	OutputBufferTimeout time.Duration
@@ -90,10 +92,10 @@ type clientV2 struct {
 	ReadyStateChan chan int
 	ExitChan       chan int
 
-	ClientID string
-	Hostname string
+	ClientID string				// 客户端ID,由外部分配
+	Hostname string				// 对端host
 
-	SampleRate int32
+	SampleRate int32			// for what ？？
 
 	IdentifyEventChan chan identifyEvent
 	SubEventChan      chan *Channel
@@ -113,7 +115,7 @@ type clientV2 struct {
 func newClientV2(id int64, conn net.Conn, ctx *context) *clientV2 {
 	var identifier string
 	if conn != nil {
-		identifier, _, _ = net.SplitHostPort(conn.RemoteAddr().String())
+		identifier, _, _ = net.SplitHostPort(conn.RemoteAddr().String()) // 获取对端host
 	}
 
 	c := &clientV2{
@@ -151,10 +153,12 @@ func newClientV2(id int64, conn net.Conn, ctx *context) *clientV2 {
 	return c
 }
 
+//  返回host：ip字符串
 func (c *clientV2) String() string {
 	return c.RemoteAddr().String()
 }
 
+// 使用identifyDataV2信息给客户端认证信息
 func (c *clientV2) Identify(data identifyDataV2) error {
 	c.ctx.nsqd.logf("[%s] IDENTIFY: %+v", c, data)
 
@@ -169,32 +173,37 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 		clientID = data.ShortID
 	}
 
+
 	c.metaLock.Lock()
-	c.ClientID = clientID
-	c.Hostname = hostname
+	c.ClientID = clientID  // data.ClientID
+	c.Hostname = hostname  // data.Hostname
 	c.UserAgent = data.UserAgent
 	c.metaLock.Unlock()
 
+	// 设置心跳超时
 	err := c.SetHeartbeatInterval(data.HeartbeatInterval)
 	if err != nil {
 		return err
 	}
 
+	// 设置writer的buffer大小
 	err = c.SetOutputBufferSize(data.OutputBufferSize)
 	if err != nil {
 		return err
 	}
 
+	// 设置buffer flush的超时时间
 	err = c.SetOutputBufferTimeout(data.OutputBufferTimeout)
 	if err != nil {
 		return err
 	}
-
+	// for what ？？
 	err = c.SetSampleRate(data.SampleRate)
 	if err != nil {
 		return err
 	}
 
+	// 设置Message消息超时？
 	err = c.SetMsgTimeout(data.MsgTimeout)
 	if err != nil {
 		return err
@@ -209,7 +218,7 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 
 	// update the client's message pump
 	select {
-	case c.IdentifyEventChan <- ie:
+	case c.IdentifyEventChan <- ie:    // protocolV2的messagePump处理
 	default:
 	}
 
@@ -437,7 +446,7 @@ func (c *clientV2) SetOutputBufferSize(desiredSize int) error {
 		if err != nil {
 			return err
 		}
-		c.Writer = bufio.NewWriterSize(c.Conn, size)
+		c.Writer = bufio.NewWriterSize(c.Conn, size) // 改变buffer大小
 	}
 
 	return nil
@@ -455,6 +464,7 @@ func (c *clientV2) SetOutputBufferTimeout(desiredTimeout int) error {
 		// do nothing (use default)
 	case desiredTimeout >= 1 &&
 		desiredTimeout <= int(c.ctx.nsqd.getOpts().MaxOutputBufferTimeout/time.Millisecond):
+
 		c.OutputBufferTimeout = time.Duration(desiredTimeout) * time.Millisecond
 	default:
 		return fmt.Errorf("output buffer timeout (%d) is invalid", desiredTimeout)
@@ -480,6 +490,7 @@ func (c *clientV2) SetMsgTimeout(msgTimeout int) error {
 		// do nothing (use default)
 	case msgTimeout >= 1000 &&
 		msgTimeout <= int(c.ctx.nsqd.getOpts().MaxMsgTimeout/time.Millisecond):
+
 		c.MsgTimeout = time.Duration(msgTimeout) * time.Millisecond
 	default:
 		return fmt.Errorf("msg timeout (%d) is invalid", msgTimeout)
