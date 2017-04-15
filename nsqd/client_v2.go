@@ -55,10 +55,10 @@ type identifyEvent struct {
 
 type clientV2 struct {
 	// 64bit atomic vars need to be first for proper alignment on 32bit platforms
-	ReadyCount    int64
-	InFlightCount int64
-	MessageCount  uint64
-	FinishCount   uint64
+	ReadyCount    int64			// 准备发送的数据？
+	InFlightCount int64			// 发送但是没有获得确认的信息数量
+	MessageCount  uint64			// 发送的信息数量
+	FinishCount   uint64			// 发送但是获得确认的信息数量
 	RequeueCount  uint64
 
 	writeLock sync.RWMutex
@@ -89,8 +89,8 @@ type clientV2 struct {
 	State          int32
 	ConnectTime    time.Time
 	Channel        *Channel
-	ReadyStateChan chan int
-	ExitChan       chan int
+	ReadyStateChan chan int			// protocolV2的messagePump处理
+	ExitChan       chan int			// protocolV2的messagePump处理
 
 	ClientID string				// 客户端ID,由外部分配
 	Hostname string				// 对端host
@@ -175,8 +175,8 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 
 
 	c.metaLock.Lock()
-	c.ClientID = clientID  // data.ClientID
-	c.Hostname = hostname  // data.Hostname
+	c.ClientID = clientID  			// data.ClientID
+	c.Hostname = hostname  			// data.Hostname
 	c.UserAgent = data.UserAgent
 	c.metaLock.Unlock()
 
@@ -203,7 +203,7 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 		return err
 	}
 
-	// 设置Message消息超时？
+	// 设置Message消息超时
 	err = c.SetMsgTimeout(data.MsgTimeout)
 	if err != nil {
 		return err
@@ -240,6 +240,8 @@ func (c *clientV2) Stats() ClientStats {
 		identityURL = c.AuthState.IdentityURL
 	}
 	c.metaLock.RUnlock()
+
+	// 复制客户端状态信息
 	stats := ClientStats{
 		// TODO: deprecated, remove in 1.0
 		Name: name,
@@ -265,6 +267,7 @@ func (c *clientV2) Stats() ClientStats {
 		AuthIdentityURL: identityURL,
 	}
 	if stats.TLS {
+		// 如果使用ＴＬＳ
 		p := prettyConnectionState{c.tlsConn.ConnectionState()}
 		stats.CipherSuite = p.GetCipherSuite()
 		stats.TLSVersion = p.GetVersion()
@@ -279,6 +282,7 @@ type prettyConnectionState struct {
 	tls.ConnectionState
 }
 
+// 获取加密类型
 func (p *prettyConnectionState) GetCipherSuite() string {
 	switch p.CipherSuite {
 	case tls.TLS_RSA_WITH_RC4_128_SHA:
@@ -311,6 +315,7 @@ func (p *prettyConnectionState) GetCipherSuite() string {
 	return fmt.Sprintf("Unknown %d", p.CipherSuite)
 }
 
+// 获取TLS/SSL的版本
 func (p *prettyConnectionState) GetVersion() string {
 	switch p.Version {
 	case tls.VersionSSL30:
@@ -356,27 +361,28 @@ func (c *clientV2) tryUpdateReadyState() {
 	// where you cannot the message pump loop would have iterated anyway.
 	// the atomic integer operations guarantee correctness of the value.
 	select {
-	case c.ReadyStateChan <- 1:
+	case c.ReadyStateChan <- 1:	// ??
 	default:
 	}
 }
 
+// 统计发送并获取对方确认
 func (c *clientV2) FinishedMessage() {
 	atomic.AddUint64(&c.FinishCount, 1)
 	atomic.AddInt64(&c.InFlightCount, -1)
 	c.tryUpdateReadyState()
 }
-
+//
 func (c *clientV2) Empty() {
 	atomic.StoreInt64(&c.InFlightCount, 0)
 	c.tryUpdateReadyState()
 }
-
+// 统计发送的数据
 func (c *clientV2) SendingMessage() {
 	atomic.AddInt64(&c.InFlightCount, 1)
 	atomic.AddUint64(&c.MessageCount, 1)
 }
-
+// 消息超时，那么需要等待的信息减１
 func (c *clientV2) TimedOutMessage() {
 	atomic.AddInt64(&c.InFlightCount, -1)
 	c.tryUpdateReadyState()
@@ -576,6 +582,7 @@ func (c *clientV2) Flush() error {
 	return nil
 }
 
+// 获取认证
 func (c *clientV2) QueryAuthd() error {
 	remoteIP, _, err := net.SplitHostPort(c.String())
 	if err != nil {

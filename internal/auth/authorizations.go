@@ -17,6 +17,7 @@ type Authorization struct {
 	Permissions []string `json:"permissions"`
 }
 
+//
 type State struct {
 	TTL            int             `json:"ttl"`
 	Authorizations []Authorization `json:"authorizations"`

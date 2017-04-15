@@ -63,6 +63,7 @@ func NewChannelStats(c *Channel, clients []ClientStats) ChannelStats {
 	}
 }
 
+// 客户端状态信息
 type ClientStats struct {
 	// TODO: deprecated, remove in 1.0
 	Name string `json:"name"`

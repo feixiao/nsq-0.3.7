@@ -1,13 +1,16 @@
 <component name="libraryTable">
   <library name="GOPATH &lt;nsq-0.3.7&gt;">
     <CLASSES>
-      <root url="file://$PROJECT_DIR$/../vendor" />
-      <root url="file://$PROJECT_DIR$/../nsq-0.3.7sdfas" />
-      <root url="file://$PROJECT_DIR$/../frank" />
-      <root url="file://$PROJECT_DIR$/../github.com" />
+      <root url="file://$USER_HOME$/gohome/src/github.com" />
+      <root url="file://$USER_HOME$/gohome/src/golang.org" />
+      <root url="file://$USER_HOME$/gohome/src/sourcegraph.com" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="file://$USER_HOME$/gohome/src/github.com" />
+      <root url="file://$USER_HOME$/gohome/src/golang.org" />
+      <root url="file://$USER_HOME$/gohome/src/sourcegraph.com" />
+    </SOURCES>
     <excluded>
       <root url="file://$PROJECT_DIR$" />
     </excluded>

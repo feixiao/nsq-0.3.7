@@ -436,6 +436,7 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 		return nil, protocol.NewFatalClientErr(nil, "E_IDENTIFY_FAILED", "cannot enable both deflate and snappy compression")
 	}
 
+	//　回复
 	resp, err := json.Marshal(struct {
 		MaxRdyCount         int64  `json:"max_rdy_count"`
 		Version             string `json:"version"`
@@ -474,6 +475,8 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 		return nil, protocol.NewFatalClientErr(err, "E_IDENTIFY_FAILED", "IDENTIFY failed "+err.Error())
 	}
 
+
+	// ???
 	if tlsv1 {
 		p.ctx.nsqd.logf("PROTOCOL(V2): [%s] upgrading connection to TLS", client)
 		err = client.UpgradeTLS()
