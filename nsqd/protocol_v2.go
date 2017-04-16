@@ -373,7 +373,7 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot IDENTIFY in current state")
 	}
 
-	// 读取前面四个字节，并获取消息的长度
+	// 读取前面四个字节，并获取消息体的长度
 	bodyLen, err := readLen(client.Reader, client.lenSlice)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "IDENTIFY failed to read body size")
@@ -519,44 +519,53 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 	return nil, nil
 }
 
+
 func (p *protocolV2) AUTH(client *clientV2, params [][]byte) ([]byte, error) {
+
+	// 只有在stateInit才处理AUTH
 	if atomic.LoadInt32(&client.State) != stateInit {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot AUTH in current state")
 	}
 
+	// 检查参数的合法性
 	if len(params) != 1 {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "AUTH invalid number of parameters")
 	}
 
+	// 获取前面四个字节（表示消息体长度）
 	bodyLen, err := readLen(client.Reader, client.lenSlice)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "AUTH failed to read body size")
 	}
 
+	// 如果消息体的最大长度超过最大的消息体的长度,则返回错误
 	if int64(bodyLen) > p.ctx.nsqd.getOpts().MaxBodySize {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_BODY",
 			fmt.Sprintf("AUTH body too big %d > %d", bodyLen, p.ctx.nsqd.getOpts().MaxBodySize))
 	}
-
+	// 如果长度小于0也是错误数据
 	if bodyLen <= 0 {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_BODY",
 			fmt.Sprintf("AUTH invalid body size %d", bodyLen))
 	}
 
+	// 读取全部的数据（auth secret）
 	body := make([]byte, bodyLen)
 	_, err = io.ReadFull(client.Reader, body)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "AUTH failed to read body")
 	}
 
+	// 判断是已经认证
 	if client.HasAuthorizations() {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "AUTH Already set")
 	}
 
+	// 判断是否可以认证（通过有没有设置AuthHTTPAddresses判断）
 	if !client.ctx.nsqd.IsAuthEnabled() {
 		return nil, protocol.NewFatalClientErr(err, "E_AUTH_DISABLED", "AUTH Disabled")
 	}
-
+	// 设在auth secret
 	if err := client.Auth(string(body)); err != nil {
 		// we don't want to leak errors contacting the auth server to untrusted clients
 		p.ctx.nsqd.logf("PROTOCOL(V2): [%s] Auth Failed %s", client, err)
@@ -567,6 +576,7 @@ func (p *protocolV2) AUTH(client *clientV2, params [][]byte) ([]byte, error) {
 		return nil, protocol.NewFatalClientErr(nil, "E_UNAUTHORIZED", "AUTH No authorizations found")
 	}
 
+	// 回复内容
 	resp, err := json.Marshal(struct {
 		Identity        string `json:"identity"`
 		IdentityURL     string `json:"identity_url"`
@@ -594,12 +604,14 @@ func (p *protocolV2) CheckAuth(client *clientV2, cmd, topicName, channelName str
 	// compare topic/channel against cached authorization data (refetching if expired)
 	if client.ctx.nsqd.IsAuthEnabled() {
 		if !client.HasAuthorizations() {
+			// 客户端没有获取认证
 			return protocol.NewFatalClientErr(nil, "E_AUTH_FIRST",
 				fmt.Sprintf("AUTH required before %s", cmd))
 		}
 		ok, err := client.IsAuthorized(topicName, channelName)
 		if err != nil {
 			// we don't want to leak errors contacting the auth server to untrusted clients
+			// 认证失败
 			p.ctx.nsqd.logf("PROTOCOL(V2): [%s] Auth Failed %s", client, err)
 			return protocol.NewFatalClientErr(nil, "E_AUTH_FAILED", "AUTH failed")
 		}
@@ -608,33 +620,38 @@ func (p *protocolV2) CheckAuth(client *clientV2, cmd, topicName, channelName str
 				fmt.Sprintf("AUTH failed for %s on %q %q", cmd, topicName, channelName))
 		}
 	}
-	return nil
+	return nil  // 不想要认证，
 }
 
+// Subscribe to a topic/channel
 func (p *protocolV2) SUB(client *clientV2, params [][]byte) ([]byte, error) {
 	if atomic.LoadInt32(&client.State) != stateInit {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot SUB in current state")
 	}
 
+	// 没有设置心跳的时候我们不允许sub操作
 	if client.HeartbeatInterval <= 0 {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot SUB with heartbeats disabled")
 	}
 
+	// 检查参数是否正确 SUB <topic_name> <channel_name>\n
 	if len(params) < 3 {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "SUB insufficient number of parameters")
 	}
 
+	// 获取topic名字
 	topicName := string(params[1])
 	if !protocol.IsValidTopicName(topicName) {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_TOPIC",
 			fmt.Sprintf("SUB topic name %q is not valid", topicName))
 	}
-
+	// 获取channel名字
 	channelName := string(params[2])
 	if !protocol.IsValidChannelName(channelName) {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_CHANNEL",
 			fmt.Sprintf("SUB channel name %q is not valid", channelName))
 	}
+
 
 	if err := p.CheckAuth(client, "SUB", topicName, channelName); err != nil {
 		return nil, err
@@ -645,17 +662,22 @@ func (p *protocolV2) SUB(client *clientV2, params [][]byte) ([]byte, error) {
 	channel := topic.GetChannel(channelName)
 	channel.AddClient(client.ID, client)
 
+	//  改变客户端的状态为stateSubscribed
 	atomic.StoreInt32(&client.State, stateSubscribed)
+	// 引用自己所订阅的Channel
 	client.Channel = channel
+
 	// update message pump
-	client.SubEventChan <- channel
+	client.SubEventChan <- channel  // 触发SubEvent，处理的逻辑是将SubEventChan设置为nil
 
 	return okBytes, nil
 }
 
+// Update RDY state (indicate you are ready to receive N messages)
 func (p *protocolV2) RDY(client *clientV2, params [][]byte) ([]byte, error) {
 	state := atomic.LoadInt32(&client.State)
 
+	// 如果状态是stateClosing就不回复了
 	if state == stateClosing {
 		// just ignore ready changes on a closing channel
 		p.ctx.nsqd.logf(
@@ -664,12 +686,15 @@ func (p *protocolV2) RDY(client *clientV2, params [][]byte) ([]byte, error) {
 		return nil, nil
 	}
 
+	// 只有在stateSubscribed状态下RDY命令才能被处理
 	if state != stateSubscribed {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot RDY in current state")
 	}
 
+	// RDY <count>\n
 	count := int64(1)
 	if len(params) > 1 {
+		//将参数转换成十进制
 		b10, err := protocol.ByteToBase10(params[1])
 		if err != nil {
 			return nil, protocol.NewFatalClientErr(err, "E_INVALID",
@@ -678,6 +703,7 @@ func (p *protocolV2) RDY(client *clientV2, params [][]byte) ([]byte, error) {
 		count = int64(b10)
 	}
 
+	// 判断数据是否合法
 	if count < 0 || count > p.ctx.nsqd.getOpts().MaxRdyCount {
 		// this needs to be a fatal error otherwise clients would have
 		// inconsistent state
@@ -690,21 +716,25 @@ func (p *protocolV2) RDY(client *clientV2, params [][]byte) ([]byte, error) {
 	return nil, nil
 }
 
+// Finish a message (indicate successful processing)
 func (p *protocolV2) FIN(client *clientV2, params [][]byte) ([]byte, error) {
+	// 判断客户端状态是否正确
 	state := atomic.LoadInt32(&client.State)
 	if state != stateSubscribed && state != stateClosing {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot FIN in current state")
 	}
-
+	// 判断参数是否正确 FIN <message_id>\n
 	if len(params) < 2 {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "FIN insufficient number of params")
 	}
 
+	// 获取 message_id
 	id, err := getMessageID(params[1])
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", err.Error())
 	}
 
+	// 告知Channel这个id的消息已经被成功的处理
 	err = client.Channel.FinishMessage(client.ID, *id)
 	if err != nil {
 		return nil, protocol.NewClientErr(err, "E_FIN_FAILED",

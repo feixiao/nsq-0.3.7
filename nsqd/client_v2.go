@@ -55,10 +55,10 @@ type identifyEvent struct {
 
 type clientV2 struct {
 	// 64bit atomic vars need to be first for proper alignment on 32bit platforms
-	ReadyCount    int64			// 准备发送的数据？
+	ReadyCount    int64			// 客户端反馈这次最多接收多少条消息
 	InFlightCount int64			// 发送但是没有获得确认的信息数量
-	MessageCount  uint64			// 发送的信息数量
-	FinishCount   uint64			// 发送但是获得确认的信息数量
+	MessageCount  uint64		// 发送的信息数量
+	FinishCount   uint64		// 发送但是获得确认的信息数量
 	RequeueCount  uint64
 
 	writeLock sync.RWMutex
@@ -88,14 +88,14 @@ type clientV2 struct {
 
 	State          int32
 	ConnectTime    time.Time
-	Channel        *Channel
+	Channel        *Channel			// 自己所订阅的Channel
 	ReadyStateChan chan int			// protocolV2的messagePump处理
 	ExitChan       chan int			// protocolV2的messagePump处理
 
-	ClientID string				// 客户端ID,由外部分配
-	Hostname string				// 对端host
+	ClientID string					// 客户端ID,由外部分配
+	Hostname string					// 对端host
 
-	SampleRate int32			// for what ？？
+	SampleRate int32				// for what ？？
 
 	IdentifyEventChan chan identifyEvent
 	SubEventChan      chan *Channel
@@ -351,6 +351,7 @@ func (c *clientV2) IsReadyForMessages() bool {
 	return true
 }
 
+// 设置本次客户端最多接收的消息数量
 func (c *clientV2) SetReadyCount(count int64) {
 	atomic.StoreInt64(&c.ReadyCount, count)
 	c.tryUpdateReadyState()

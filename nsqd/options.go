@@ -20,7 +20,7 @@ type Options struct {
 	HTTPSAddress           string   `flag:"https-address"`
 	BroadcastAddress       string   `flag:"broadcast-address"`
 	NSQLookupdTCPAddresses []string `flag:"lookupd-tcp-address" cfg:"nsqlookupd_tcp_addresses"`
-	AuthHTTPAddresses      []string `flag:"auth-http-address" cfg:"auth_http_addresses"`
+	AuthHTTPAddresses      []string `flag:"auth-http-address" cfg:"auth_http_addresses"`		// 认证服务地址
 
 	// diskqueue options
 	DataPath        string        `flag:"data-path"`		// 持久化数据的路径
@@ -45,7 +45,7 @@ type Options struct {
 
 	// client overridable configuration options
 	MaxHeartbeatInterval   time.Duration `flag:"max-heartbeat-interval"`					// 心跳超时
-	MaxRdyCount            int64         `flag:"max-rdy-count"`
+	MaxRdyCount            int64         `flag:"max-rdy-count"`								// 允许客户端一次最多接收的消息数量
 	MaxOutputBufferSize    int64         `flag:"max-output-buffer-size"`					// tcp writer对象的缓存
 	MaxOutputBufferTimeout time.Duration `flag:"max-output-buffer-timeout"`
 
