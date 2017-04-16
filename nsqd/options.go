@@ -24,7 +24,7 @@ type Options struct {
 
 	// diskqueue options
 	DataPath        string        `flag:"data-path"`		// 持久化数据的路径
-	MemQueueSize    int64         `flag:"mem-queue-size"`
+	MemQueueSize    int64         `flag:"mem-queue-size"`		// Message Channel的最大缓冲
 	MaxBytesPerFile int64         `flag:"max-bytes-per-file"`	// 每个文件最大的字节数
 	SyncEvery       int64         `flag:"sync-every"`
 	SyncTimeout     time.Duration `flag:"sync-timeout"`

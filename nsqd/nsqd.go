@@ -603,12 +603,12 @@ func (n *NSQD) Notify(v interface{}) {
 		// we do not block exit, see issue #123
 		select {
 		case <-n.exitChan:
-		case n.notifyChan <- v:
+		case n.notifyChan <- v:			// 写入notifyChan，然后等待处理
 			if !persist {
 				return
 			}
 			n.Lock()
-			err := n.PersistMetadata()
+			err := n.PersistMetadata()	//持久化元数据
 			if err != nil {
 				n.logf("ERROR: failed to persist metadata - %s", err)
 			}

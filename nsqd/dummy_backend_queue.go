@@ -1,5 +1,6 @@
 package nsqd
 
+// 实现BackendQueue接口，但是写入的数据都是丢弃的
 type dummyBackendQueue struct {
 	readChan chan []byte
 }
