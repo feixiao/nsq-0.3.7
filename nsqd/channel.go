@@ -433,6 +433,7 @@ func (c *Channel) RequeueMessage(clientID int64, id MessageID, timeout time.Dura
 }
 
 // AddClient adds a client to the Channel's client list
+// 添加客户端到这个Channel
 func (c *Channel) AddClient(clientID int64, client Consumer) {
 	c.Lock()
 	defer c.Unlock()
@@ -445,6 +446,7 @@ func (c *Channel) AddClient(clientID int64, client Consumer) {
 }
 
 // RemoveClient removes a client from the Channel's client list
+// 从这个Channel删除客户端
 func (c *Channel) RemoveClient(clientID int64) {
 	c.Lock()
 	defer c.Unlock()
@@ -456,6 +458,7 @@ func (c *Channel) RemoveClient(clientID int64) {
 	delete(c.clients, clientID)
 
 	if len(c.clients) == 0 && c.ephemeral == true {
+		// 如果这个Channle没有客户端关注，同时设置为ephemeral，那么删除这个Channel
 		go c.deleter.Do(func() { c.deleteCallback(c) })
 	}
 }
@@ -502,6 +505,7 @@ func (c *Channel) doRequeue(m *Message) error {
 }
 
 // pushInFlightMessage atomically adds a message to the in-flight dictionary
+// 向inFlightMessages中添加消息
 func (c *Channel) pushInFlightMessage(msg *Message) error {
 	c.inFlightMutex.Lock()
 	_, ok := c.inFlightMessages[msg.ID]
@@ -515,6 +519,7 @@ func (c *Channel) pushInFlightMessage(msg *Message) error {
 }
 
 // popInFlightMessage atomically removes a message from the in-flight dictionary
+// 从inFlightMessages中移除消息
 func (c *Channel) popInFlightMessage(clientID int64, id MessageID) (*Message, error) {
 	c.inFlightMutex.Lock()
 	msg, ok := c.inFlightMessages[id]
@@ -530,13 +535,14 @@ func (c *Channel) popInFlightMessage(clientID int64, id MessageID) (*Message, er
 	c.inFlightMutex.Unlock()
 	return msg, nil
 }
-
+// 消息添加到inFlightPQ队列
 func (c *Channel) addToInFlightPQ(msg *Message) {
 	c.inFlightMutex.Lock()
 	c.inFlightPQ.Push(msg)
 	c.inFlightMutex.Unlock()
 }
 
+// 从inFlightPQ队列中删除消息
 func (c *Channel) removeFromInFlightPQ(msg *Message) {
 	c.inFlightMutex.Lock()
 	if msg.index == -1 {
@@ -548,6 +554,7 @@ func (c *Channel) removeFromInFlightPQ(msg *Message) {
 	c.inFlightMutex.Unlock()
 }
 
+// 添加消息到deferredMessages
 func (c *Channel) pushDeferredMessage(item *pqueue.Item) error {
 	c.deferredMutex.Lock()
 	// TODO: these map lookups are costly
@@ -561,7 +568,7 @@ func (c *Channel) pushDeferredMessage(item *pqueue.Item) error {
 	c.deferredMutex.Unlock()
 	return nil
 }
-
+// 从deferredMessages中删除消息
 func (c *Channel) popDeferredMessage(id MessageID) (*pqueue.Item, error) {
 	c.deferredMutex.Lock()
 	// TODO: these map lookups are costly
@@ -574,7 +581,7 @@ func (c *Channel) popDeferredMessage(id MessageID) (*pqueue.Item, error) {
 	c.deferredMutex.Unlock()
 	return item, nil
 }
-
+// 添加信息到deferredPQ
 func (c *Channel) addToDeferredPQ(item *pqueue.Item) {
 	c.deferredMutex.Lock()
 	heap.Push(&c.deferredPQ, item)
@@ -622,6 +629,7 @@ exit:
 	close(c.clientMsgChan)
 }
 
+// 处理队列deferredPQ
 func (c *Channel) processDeferredQueue(t int64) bool {
 	c.exitMutex.RLock()
 	defer c.exitMutex.RUnlock()
@@ -653,6 +661,7 @@ exit:
 	return dirty
 }
 
+// 处理InFlightQueue
 func (c *Channel) processInFlightQueue(t int64) bool {
 	c.exitMutex.RLock()
 	defer c.exitMutex.RUnlock()
