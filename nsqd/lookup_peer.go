@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	// https://github.com/nsqio/go-nsq/blob/v1.0.5/command.go
 	"github.com/nsqio/go-nsq"
 )
 
@@ -98,6 +99,7 @@ func (lp *lookupPeer) Close() error {
 //
 // It returns the response from nsqlookupd as []byte
 // 执行命令，并返回nsqlookupd的返回信息
+// nsq : "github.com/nsqio/go-nsq"
 func (lp *lookupPeer) Command(cmd *nsq.Command) ([]byte, error) {
 	initialState := lp.state
 	if lp.state != stateConnected {
