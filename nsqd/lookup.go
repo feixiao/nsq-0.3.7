@@ -12,26 +12,33 @@ import (
 	"github.com/nsqio/nsq/internal/version"
 )
 
+// 连接成功之后调用
 func connectCallback(n *NSQD, hostname string, syncTopicChan chan *lookupPeer) func(*lookupPeer) {
 	return func(lp *lookupPeer) {
 		ci := make(map[string]interface{})
-		ci["version"] = version.Binary
-		ci["tcp_port"] = n.RealTCPAddr().Port
-		ci["http_port"] = n.RealHTTPAddr().Port
+		ci["version"] = version.Binary			// nsqd的版本号
+		ci["tcp_port"] = n.RealTCPAddr().Port		// tcp服务的端口
+		ci["http_port"] = n.RealHTTPAddr().Port		// http服务的端口
 		ci["hostname"] = hostname
-		ci["broadcast_address"] = n.getOpts().BroadcastAddress
+		ci["broadcast_address"] = n.getOpts().BroadcastAddress		// for what ??
 
+		// https://github.com/feixiao/go-nsq/blob/master/command.go
+		// 发送认证命令，具体生成的命令，请查看上述源码
 		cmd, err := nsq.Identify(ci)
 		if err != nil {
 			lp.Close()
 			return
 		}
+		// 发送命令并获取回复
 		resp, err := lp.Command(cmd)
 		if err != nil {
+			// 出错
 			n.logf("LOOKUPD(%s): ERROR %s - %s", lp, cmd, err)
 		} else if bytes.Equal(resp, []byte("E_INVALID")) {
+			// 回复出错
 			n.logf("LOOKUPD(%s): lookupd returned %s", lp, resp)
 		} else {
+			// 正确结果
 			err = json.Unmarshal(resp, &lp.Info)
 			if err != nil {
 				n.logf("LOOKUPD(%s): ERROR parsing response - %s", lp, resp)
@@ -47,12 +54,12 @@ func connectCallback(n *NSQD, hostname string, syncTopicChan chan *lookupPeer) f
 }
 
 func (n *NSQD) lookupLoop() {
-	var lookupPeers []*lookupPeer
-	var lookupAddrs []string
+	var lookupPeers []*lookupPeer			// 保存完成连接的lookupd对象信息
+	var lookupAddrs []string			// 保存已经连接好的lookupd地址信息
 	syncTopicChan := make(chan *lookupPeer)
 	connect := true
 
-	hostname, err := os.Hostname()
+	hostname, err := os.Hostname()			// 获取host名字
 	if err != nil {
 		n.logf("FATAL: failed to get hostname - %s", err)
 		os.Exit(1)
@@ -62,11 +69,13 @@ func (n *NSQD) lookupLoop() {
 	ticker := time.Tick(15 * time.Second)
 	for {
 		if connect {
+			// 连接全部的lookupd
 			for _, host := range n.getOpts().NSQLookupdTCPAddresses {
 				if in(host, lookupAddrs) {
-					continue
+					continue	// 如果已经完成连接，那么我们继续下一个
 				}
 				n.logf("LOOKUP(%s): adding peer", host)
+				// 创建连接到lookupd的连接对象
 				lookupPeer := newLookupPeer(host, n.getOpts().MaxBodySize, n.getOpts().Logger,
 					connectCallback(n, hostname, syncTopicChan))
 				lookupPeer.Command(nil) // start the connection

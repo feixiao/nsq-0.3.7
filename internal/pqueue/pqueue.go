@@ -69,7 +69,7 @@ func (pq *PriorityQueue) Pop() interface{} {
 	return item
 }
 
-// 最小元素的优先级大于max才返回
+// 最小元素的优先级大于max才返回Item
 func (pq *PriorityQueue) PeekAndShift(max int64) (*Item, int64) {
 	if pq.Len() == 0 {
 		return nil, 0

@@ -19,7 +19,7 @@ type Options struct {
 	HTTPAddress            string   `flag:"http-address"`
 	HTTPSAddress           string   `flag:"https-address"`
 	BroadcastAddress       string   `flag:"broadcast-address"`
-	NSQLookupdTCPAddresses []string `flag:"lookupd-tcp-address" cfg:"nsqlookupd_tcp_addresses"`
+	NSQLookupdTCPAddresses []string `flag:"lookupd-tcp-address" cfg:"nsqlookupd_tcp_addresses"`	// lookupd的地址
 	AuthHTTPAddresses      []string `flag:"auth-http-address" cfg:"auth_http_addresses"`		// 认证服务地址
 
 	// diskqueue options

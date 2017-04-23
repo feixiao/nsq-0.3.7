@@ -2,25 +2,31 @@ package nsqd
 
 type inFlightPqueue []*Message
 
+// 分配容量为capacity大小的切片
 func newInFlightPqueue(capacity int) inFlightPqueue {
 	return make(inFlightPqueue, 0, capacity)
 }
 
+// 交换所以i,j处的Message
 func (pq inFlightPqueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index = i
 	pq[j].index = j
 }
 
+// 将Message添加到inFlightPqueue
 func (pq *inFlightPqueue) Push(x *Message) {
 	n := len(*pq)
 	c := cap(*pq)
 	if n+1 > c {
+		// 以两倍的方式扩容
 		npq := make(inFlightPqueue, n, c*2)
 		copy(npq, *pq)
 		*pq = npq
 	}
+	// 调整元素数量大小
 	*pq = (*pq)[0 : n+1]
+	// 将Message x添加到队列
 	x.index = n
 	(*pq)[n] = x
 	pq.up(n)
