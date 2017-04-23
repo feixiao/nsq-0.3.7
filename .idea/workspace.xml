@@ -2,15 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="c2a7c487-9547-4a43-bbe2-71377219fa3f" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/GOPATH__nsq_0_3_7_.xml" afterPath="$PROJECT_DIR$/.idea/libraries/GOPATH__nsq_0_3_7_.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/internal/pqueue/pqueue.go" afterPath="$PROJECT_DIR$/internal/pqueue/pqueue.go" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/nsqd/dqname_windows.go" afterPath="$PROJECT_DIR$/nsqd/dqname_windows.go" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/nsqd/in_flight_pqueue.go" afterPath="$PROJECT_DIR$/nsqd/in_flight_pqueue.go" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/nsqd/lookup.go" afterPath="$PROJECT_DIR$/nsqd/lookup.go" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/nsqd/message.go" afterPath="$PROJECT_DIR$/nsqd/message.go" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/nsqd/options.go" afterPath="$PROJECT_DIR$/nsqd/options.go" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/nsqd/channel.go" afterPath="$PROJECT_DIR$/nsqd/channel.go" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/nsqd/client_v2.go" afterPath="$PROJECT_DIR$/nsqd/client_v2.go" />
     </list>
     <ignored path="nsq-0.3.7.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -31,11 +25,41 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="client_v2.go" pinned="false" current-in-tab="false">
+      <file leaf-file-name="rename.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/nsqd/rename.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="85">
+              <caret line="7" column="0" lean-forward="false" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="stats.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/nsqd/stats.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1734">
+              <caret line="107" column="24" lean-forward="false" selection-start-line="107" selection-start-column="24" selection-end-line="107" selection-end-column="24" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="channel_test.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/nsqd/channel_test.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="client_v2.go" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/nsqd/client_v2.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-317">
-              <caret line="206" column="44" lean-forward="true" selection-start-line="206" selection-start-column="44" selection-end-line="206" selection-end-column="44" />
+            <state relative-caret-position="-969">
+              <caret line="27" column="13" lean-forward="true" selection-start-line="27" selection-start-column="13" selection-end-line="27" selection-end-column="13" />
               <folding>
                 <element signature="e#14#190#0" expanded="true" />
               </folding>
@@ -43,36 +67,14 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="lookup_peer.go" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/nsqd/lookup_peer.go">
+      <file leaf-file-name="channel.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/nsqd/channel.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1800">
-              <caret line="25" column="61" lean-forward="true" selection-start-line="25" selection-start-column="61" selection-end-line="25" selection-end-column="61" />
+            <state relative-caret-position="833">
+              <caret line="61" column="56" lean-forward="false" selection-start-line="61" selection-start-column="56" selection-end-line="61" selection-end-column="56" />
               <folding>
-                <element signature="e#14#158#0" expanded="true" />
+                <element signature="e#14#194#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="message.go" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/nsqd/message.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="393">
-              <caret line="119" column="43" lean-forward="false" selection-start-line="119" selection-start-column="43" selection-end-line="119" selection-end-column="43" />
-              <folding>
-                <element signature="e#14#86#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="io.go" pinned="false" current-in-tab="false">
-        <entry file="file:///opt/go/src/io/io.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="227">
-              <caret line="324" column="38" lean-forward="false" selection-start-line="324" selection-start-column="35" selection-end-line="324" selection-end-column="38" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -123,12 +125,13 @@
         <option value="$PROJECT_DIR$/nsqd/channel.go" />
         <option value="$PROJECT_DIR$/internal/pqueue/pqueue.go" />
         <option value="$PROJECT_DIR$/nsqd/in_flight_pqueue.go" />
-        <option value="$PROJECT_DIR$/nsqd/client_v2.go" />
         <option value="$PROJECT_DIR$/nsqd/dqname_windows.go" />
         <option value="$PROJECT_DIR$/nsqd/options.go" />
         <option value="$PROJECT_DIR$/nsqd/lookup_peer.go" />
         <option value="$PROJECT_DIR$/nsqd/lookup.go" />
         <option value="$PROJECT_DIR$/nsqd/message.go" />
+        <option value="$PROJECT_DIR$/nsqd/rename.go" />
+        <option value="$PROJECT_DIR$/nsqd/client_v2.go" />
       </list>
     </option>
   </component>
@@ -164,7 +167,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scratches" />
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -203,8 +206,8 @@
           </PATH>
         </subPane>
       </pane>
+      <pane id="Scratches" />
       <pane id="PackagesPane" />
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -413,7 +416,7 @@
     <option name="totallyTimeSpent" value="85000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="53" y="24" width="1867" height="1056" extended-state="6" />
+    <frame x="53" y="24" width="1867" height="1056" extended-state="7" />
     <editor active="true" />
     <layout>
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -461,13 +464,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/nsqlookupd/tcp.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="307">
-          <caret line="38" column="62" lean-forward="false" selection-start-line="38" selection-start-column="62" selection-end-line="38" selection-end-column="62" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/nsqlookupd/registration_db_test.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -546,13 +542,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/nsqd/rename.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/nsqlookupd/lookup_protocol_v1.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="135">
@@ -564,7 +553,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -572,13 +560,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="90">
           <caret line="8" column="26" lean-forward="false" selection-start-line="8" selection-start-column="18" selection-end-line="8" selection-end-column="26" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/nsqd/stats.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1020">
-          <caret line="66" column="10" lean-forward="false" selection-start-line="66" selection-start-column="10" selection-end-line="66" selection-end-column="10" />
         </state>
       </provider>
     </entry>
@@ -600,13 +581,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="102">
           <caret line="8" column="12" lean-forward="false" selection-start-line="8" selection-start-column="12" selection-end-line="8" selection-end-column="12" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/nsqd/channel_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
         </state>
       </provider>
     </entry>
@@ -683,27 +657,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/nsqd/statsd.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1496">
-          <caret line="31" column="24" lean-forward="true" selection-start-line="31" selection-start-column="24" selection-end-line="31" selection-end-column="24" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/nsqd/backend_queue.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="68">
           <caret line="4" column="17" lean-forward="false" selection-start-line="4" selection-start-column="5" selection-end-line="4" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/nsqd/channel.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-10708">
-          <caret line="39" column="0" lean-forward="true" selection-start-line="39" selection-start-column="0" selection-end-line="39" selection-end-column="0" />
-          <folding>
-            <element signature="e#14#194#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -746,7 +703,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-899">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -754,7 +710,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="85">
           <caret line="5" column="0" lean-forward="false" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -770,7 +725,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="193">
           <caret line="94" column="33" lean-forward="false" selection-start-line="94" selection-start-column="20" selection-end-line="94" selection-end-column="33" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -804,18 +758,22 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="17">
           <caret line="41" column="58" lean-forward="false" selection-start-line="41" selection-start-column="58" selection-end-line="41" selection-end-column="58" />
-          <folding>
-            <element signature="e#14#151#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/nsqd/client_v2.go">
+    <entry file="file:///opt/go/src/io/io.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-317">
-          <caret line="206" column="44" lean-forward="true" selection-start-line="206" selection-start-column="44" selection-end-line="206" selection-end-column="44" />
+        <state relative-caret-position="227">
+          <caret line="324" column="38" lean-forward="false" selection-start-line="324" selection-start-column="35" selection-end-line="324" selection-end-column="38" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/nsqd/message.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="393">
+          <caret line="119" column="43" lean-forward="false" selection-start-line="119" selection-start-column="43" selection-end-line="119" selection-end-column="43" />
           <folding>
-            <element signature="e#14#190#0" expanded="true" />
+            <element signature="e#14#86#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -830,20 +788,60 @@
         </state>
       </provider>
     </entry>
-    <entry file="file:///opt/go/src/io/io.go">
+    <entry file="file://$PROJECT_DIR$/nsqd/rename_windows.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="227">
-          <caret line="324" column="38" lean-forward="false" selection-start-line="324" selection-start-column="35" selection-end-line="324" selection-end-column="38" />
+        <state relative-caret-position="323">
+          <caret line="22" column="34" lean-forward="true" selection-start-line="22" selection-start-column="34" selection-end-line="22" selection-end-column="34" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/nsqd/rename.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="85">
+          <caret line="7" column="0" lean-forward="false" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/nsqd/message.go">
+    <entry file="file://$PROJECT_DIR$/nsqd/statsd.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="393">
-          <caret line="119" column="43" lean-forward="false" selection-start-line="119" selection-start-column="43" selection-end-line="119" selection-end-column="43" />
+        <state relative-caret-position="731">
+          <caret line="51" column="32" lean-forward="true" selection-start-line="51" selection-start-column="32" selection-end-line="51" selection-end-column="32" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/nsqd/stats.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1734">
+          <caret line="107" column="24" lean-forward="false" selection-start-line="107" selection-start-column="24" selection-end-line="107" selection-end-column="24" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/nsqd/channel_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/nsqd/channel.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="833">
+          <caret line="61" column="56" lean-forward="false" selection-start-line="61" selection-start-column="56" selection-end-line="61" selection-end-column="56" />
           <folding>
-            <element signature="e#14#86#0" expanded="true" />
+            <element signature="e#14#194#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/nsqd/client_v2.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-969">
+          <caret line="27" column="13" lean-forward="true" selection-start-line="27" selection-start-column="13" selection-end-line="27" selection-end-column="13" />
+          <folding>
+            <element signature="e#14#190#0" expanded="true" />
           </folding>
         </state>
       </provider>

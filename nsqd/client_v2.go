@@ -59,7 +59,7 @@ type clientV2 struct {
 	InFlightCount int64			// 发送但是没有获得确认的信息数量
 	MessageCount  uint64		// 发送的信息数量
 	FinishCount   uint64		// 发送但是获得确认的信息数量
-	RequeueCount  uint64
+	RequeueCount  uint64		// 消息投递失败需要再次被投递的小心数量
 
 	writeLock sync.RWMutex
 	metaLock  sync.RWMutex
@@ -108,10 +108,11 @@ type clientV2 struct {
 	lenBuf   [4]byte	// [ 4-byte size in bytes ] 即消息体中前面四个字节表示消息长度（不包括这四个字节的长度）
 	lenSlice []byte		// 将上面lenBuf数组以切片的形式操作
 
-	AuthSecret string
+	AuthSecret string		
 	AuthState  *auth.State
 }
 
+// 创建ClientV2对象
 func newClientV2(id int64, conn net.Conn, ctx *context) *clientV2 {
 	var identifier string
 	if conn != nil {
@@ -209,6 +210,7 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 		return err
 	}
 
+	// 创建identifyEvent，用于通知相关参数
 	ie := identifyEvent{
 		OutputBufferTimeout: c.OutputBufferTimeout,
 		HeartbeatInterval:   c.HeartbeatInterval,
@@ -225,6 +227,7 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 	return nil
 }
 
+// 返回ClientStats对象
 func (c *clientV2) Stats() ClientStats {
 	c.metaLock.RLock()
 	// TODO: deprecated, remove in 1.0
@@ -331,8 +334,10 @@ func (p *prettyConnectionState) GetVersion() string {
 	}
 }
 
+// 是否准备好接收消息
 func (c *clientV2) IsReadyForMessages() bool {
 	if c.Channel.IsPaused() {
+		// Channel为暂停状态，那么没有准备好
 		return false
 	}
 

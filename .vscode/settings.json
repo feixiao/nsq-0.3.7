@@ -1,0 +1,12 @@
+// 将设置放入此文件中以覆盖默认设置
+{
+    // 启用后，将在新窗口中打开文件，而不是重复使用现有实例。
+    "window.openFilesInNewWindow": false,
+
+    // HTTP 配置
+    // 要使用的代理设置。如果尚未设置，则将从 http_proxy 和 https_proxy 环境变量获取
+    "http.proxy": "http://127.0.0.1:1080",
+
+    // 是否应根据提供的 CA 列表验证代理服务器证书。
+    "http.proxyStrictSSL": true,
+}

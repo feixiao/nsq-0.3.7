@@ -3,11 +3,13 @@
     <CLASSES>
       <root url="file://$USER_HOME$/gopath/src/github.com" />
       <root url="file://$USER_HOME$/gopath/src/sourcegraph.com" />
+      <root url="file://$USER_HOME$/gopath/src/golang.org" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
       <root url="file://$USER_HOME$/gopath/src/github.com" />
       <root url="file://$USER_HOME$/gopath/src/sourcegraph.com" />
+      <root url="file://$USER_HOME$/gopath/src/golang.org" />
     </SOURCES>
     <excluded>
       <root url="file://$PROJECT_DIR$" />

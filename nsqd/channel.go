@@ -68,11 +68,11 @@ type Channel struct {
 	e2eProcessingLatencyStream *quantile.Quantile	// 主要用于统计消息投递的延迟等
 
 	// TODO: these can be DRYd up
-	deferredMessages map[MessageID]*pqueue.Item
-	deferredPQ       pqueue.PriorityQueue		// 投递失败，等待重新投递的消息
+	deferredMessages map[MessageID]*pqueue.Item		
+	deferredPQ       pqueue.PriorityQueue			// 投递失败，等待重新投递的消息
 	deferredMutex    sync.Mutex
-	inFlightMessages map[MessageID]*Message		// 管理发送出去但是对端没有确认收到的消息
-	inFlightPQ       inFlightPqueue				// 正在投递但还没确认投递成功的消息 type inFlightPqueue []*Message
+	inFlightMessages map[MessageID]*Message			// 管理发送出去但是对端没有确认收到的消息
+	inFlightPQ       inFlightPqueue					// 正在投递但还没确认投递成功的消息 type inFlightPqueue []*Message
 	inFlightMutex    sync.Mutex
 
 	// stat counters
@@ -101,7 +101,7 @@ func NewChannel(topicName string, channelName string, ctx *context,
 		)
 	}
 
-	c.initPQ() // ???
+	c.initPQ() // 初始化消息管理队列包括inFlightPQ和deferredPQ
 
 	if strings.HasSuffix(channelName, "#ephemeral") {
 		c.ephemeral = true
@@ -115,7 +115,7 @@ func NewChannel(topicName string, channelName string, ctx *context,
 			ctx.nsqd.getOpts().DataPath,
 			ctx.nsqd.getOpts().MaxBytesPerFile,
 			int32(minValidMsgLength),
-			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength,
+			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength,	//  minValidMsgLength为消息头大小
 			ctx.nsqd.getOpts().SyncEvery,
 			ctx.nsqd.getOpts().SyncTimeout,
 			ctx.nsqd.getOpts().Logger)
@@ -128,7 +128,7 @@ func NewChannel(topicName string, channelName string, ctx *context,
 	return c
 }
 
-// ???
+// 初始化消息管理队列包括inFlightPQ和deferredPQ
 func (c *Channel) initPQ() {
 	pqSize := int(math.Max(1, float64(c.ctx.nsqd.getOpts().MemQueueSize)/10))
 
@@ -210,10 +210,10 @@ func (c *Channel) Empty() error {
 	c.Lock()
 	defer c.Unlock()
 
-	c.initPQ() // ???
+	c.initPQ() // 这个是重新生成新的队列
 
 	for _, client := range c.clients {
-		client.Empty() //  ？？？
+		client.Empty() 
 	}
 
 	clientMsgChan := c.clientMsgChan
