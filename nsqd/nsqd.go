@@ -37,7 +37,6 @@ type errStore struct {
 	err error
 }
 
-
 type NSQD struct {
 	// 64bit atomic vars need to be first for proper alignment on 32bit platforms
 	clientIDSequence int64
@@ -46,10 +45,10 @@ type NSQD struct {
 
 	opts atomic.Value
 
-	dl        *dirlock.DirLock  // 文件锁
+	dl        *dirlock.DirLock // 文件锁
 	isLoading int32
-	errValue  atomic.Value      // 表示健康状况的错误值
-	startTime time.Time         // 启动时间
+	errValue  atomic.Value // 表示健康状况的错误值
+	startTime time.Time    // 启动时间
 
 	// 一个nsqd实例可以有多个Topic,使用sync.RWMutex加锁
 	topicMap map[string]*Topic
@@ -69,16 +68,16 @@ type NSQD struct {
 	optsNotificationChan chan struct{}
 
 	// 通知整体退出
-	exitChan             chan int
+	exitChan chan int
 	// 等待goroutine退出
-	waitGroup            util.WaitGroupWrapper
+	waitGroup util.WaitGroupWrapper
 
 	ci *clusterinfo.ClusterInfo
 }
 
 func New(opts *Options) *NSQD {
 	// 存储数据的目录
-	dataPath := opts.DataPath	// 数据持久化的路径
+	dataPath := opts.DataPath // 数据持久化的路径
 	if opts.DataPath == "" {
 		// 为空就选择当前目录
 		cwd, _ := os.Getwd()
@@ -93,7 +92,7 @@ func New(opts *Options) *NSQD {
 		exitChan:             make(chan int),
 		notifyChan:           make(chan interface{}),
 		optsNotificationChan: make(chan struct{}, 1),
-		ci:                   clusterinfo.New(opts.Logger, http_api.NewClient(nil)),  // log输出接口，http客户端对象
+		ci:                   clusterinfo.New(opts.Logger, http_api.NewClient(nil)), // log输出接口，http客户端对象
 		dl:                   dirlock.New(dataPath),
 	}
 	// 存储参数
@@ -167,6 +166,7 @@ func (n *NSQD) logf(f string, args ...interface{}) {
 func (n *NSQD) getOpts() *Options {
 	return n.opts.Load().(*Options)
 }
+
 // 存储参数对象
 func (n *NSQD) swapOpts(opts *Options) {
 	n.opts.Store(opts)
@@ -179,18 +179,21 @@ func (n *NSQD) triggerOptsNotification() {
 	default:
 	}
 }
+
 // 获取TCP监听的IP和端口
 func (n *NSQD) RealTCPAddr() *net.TCPAddr {
 	n.RLock()
 	defer n.RUnlock()
 	return n.tcpListener.Addr().(*net.TCPAddr)
 }
+
 // 获取HTTP监听的IP和端口
 func (n *NSQD) RealHTTPAddr() *net.TCPAddr {
 	n.RLock()
 	defer n.RUnlock()
 	return n.httpListener.Addr().(*net.TCPAddr)
 }
+
 // 获取HTTPS监听的IP和端口
 func (n *NSQD) RealHTTPSAddr() *net.TCPAddr {
 	n.RLock()
@@ -242,7 +245,7 @@ func (n *NSQD) Main() {
 		os.Exit(1)
 	}
 	n.Lock()
-	n.tcpListener = tcpListener  // 为什么要加锁？
+	n.tcpListener = tcpListener // 为什么要加锁？
 	n.Unlock()
 
 	// TCP服务器
@@ -280,9 +283,9 @@ func (n *NSQD) Main() {
 	})
 
 	// 启动四个goroutine处理业务
-	n.waitGroup.Wrap(func() { n.queueScanLoop() })
-	n.waitGroup.Wrap(func() { n.idPump() })				// 不断产生全局唯一的MessageID
-	n.waitGroup.Wrap(func() { n.lookupLoop() })
+	n.waitGroup.Wrap(func() { n.queueScanLoop() }) // 用若干个worker来扫描并处理当前在投递中以及等待重新投递的消息。worker的个数由配置和当前Channel数量共同决定。
+	n.waitGroup.Wrap(func() { n.idPump() })        // 不断产生全局唯一的MessageID
+	n.waitGroup.Wrap(func() { n.lookupLoop() })    // loopup.go
 	if n.getOpts().StatsdAddress != "" {
 		n.waitGroup.Wrap(func() { n.statsdLoop() })
 	}
@@ -292,8 +295,8 @@ func (n *NSQD) Main() {
 func (n *NSQD) LoadMetadata() {
 
 	// n.isLoading暗示数据是否在载入过程中
-	atomic.StoreInt32(&n.isLoading, 1)			// 表明数据在载入过程中
-	defer atomic.StoreInt32(&n.isLoading, 0)	// 表明数据完成载入过程
+	atomic.StoreInt32(&n.isLoading, 1)       // 表明数据在载入过程中
+	defer atomic.StoreInt32(&n.isLoading, 0) // 表明数据完成载入过程
 
 	// 获取数据的完整路径
 	fn := fmt.Sprintf(path.Join(n.getOpts().DataPath, "nsqd.%d.dat"), n.getOpts().ID)
@@ -304,7 +307,7 @@ func (n *NSQD) LoadMetadata() {
 		if !os.IsNotExist(err) {
 			n.logf("ERROR: failed to read channel metadata from %s - %s", fn, err)
 		}
-		return	// 其他错误就直接退出（也不说明错误原因的...）
+		return // 其他错误就直接退出（也不说明错误原因的...）
 	}
 
 	// 使用文件中的数据构建Json对象
@@ -651,9 +654,9 @@ func (n *NSQD) channels() []*Channel {
 //
 // 调整queueScanWorker的goroutines数量
 func (n *NSQD) resizePool(num int, workCh chan *Channel, responseCh chan bool, closeCh chan int) {
-	idealPoolSize := int(float64(num) * 0.25)	// 理想的大小（num为当前topic中Channel的数量）
+	idealPoolSize := int(float64(num) * 0.25) // 理想的大小（num为当前topic中Channel的数量）
 	if idealPoolSize < 1 {
-		idealPoolSize = 1	
+		idealPoolSize = 1
 	} else if idealPoolSize > n.getOpts().QueueScanWorkerPoolMax {
 		// 超过最大值就根据最大值进行调整
 		idealPoolSize = n.getOpts().QueueScanWorkerPoolMax
@@ -665,12 +668,12 @@ func (n *NSQD) resizePool(num int, workCh chan *Channel, responseCh chan bool, c
 		} else if idealPoolSize < n.poolSize {
 			// contract
 			// 如果现在需要的idealPoolSize比实际存在的小
-			closeCh <- 1	// queueScanWorker中处理
-			n.poolSize--	
+			closeCh <- 1 // queueScanWorker中处理，返回即减少一个queueScanWorker
+			n.poolSize--
 		} else {
 			// expand
 			n.waitGroup.Wrap(func() {
-				n.queueScanWorker(workCh, responseCh, closeCh)
+				n.queueScanWorker(workCh, responseCh, closeCh) // 创建一个新的queueScanWorker
 			})
 			n.poolSize++
 		}
@@ -679,6 +682,7 @@ func (n *NSQD) resizePool(num int, workCh chan *Channel, responseCh chan bool, c
 
 // queueScanWorker receives work (in the form of a channel) from queueScanLoop
 // and processes the deferred and in-flight queues
+// 处理workCh并返回结果给responseCh，表明消息是否已经被投递
 func (n *NSQD) queueScanWorker(workCh chan *Channel, responseCh chan bool, closeCh chan int) {
 	for {
 		select {
@@ -693,6 +697,7 @@ func (n *NSQD) queueScanWorker(workCh chan *Channel, responseCh chan bool, close
 			}
 			responseCh <- dirty
 		case <-closeCh:
+			// 退出当前的goroutine，即减少一个queueScanWorker
 			return
 		}
 	}
@@ -775,9 +780,9 @@ func (n *NSQD) queueScanLoop() {
 		}
 
 		if float64(numDirty)/float64(num) > n.getOpts().QueueScanDirtyPercent {
-			goto loop	// 如果消息投递比例高于设定值，就继续扫描
+			goto loop // 如果消息投递比例高于设定值，就继续扫描
 		}
-	}	// end of for 
+	} // end of for
 
 exit:
 	n.logf("QUEUESCAN: closing")
