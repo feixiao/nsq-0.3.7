@@ -281,7 +281,7 @@ func (n *NSQD) Main() {
 
 	// 启动四个goroutine处理业务
 	n.waitGroup.Wrap(func() { n.queueScanLoop() })
-	n.waitGroup.Wrap(func() { n.idPump() })
+	n.waitGroup.Wrap(func() { n.idPump() })				// 不断产生全局唯一的MessageID
 	n.waitGroup.Wrap(func() { n.lookupLoop() })
 	if n.getOpts().StatsdAddress != "" {
 		n.waitGroup.Wrap(func() { n.statsdLoop() })
@@ -292,7 +292,7 @@ func (n *NSQD) Main() {
 func (n *NSQD) LoadMetadata() {
 
 	// n.isLoading暗示数据是否在载入过程中
-	atomic.StoreInt32(&n.isLoading, 1)		// 表明数据在载入过程中
+	atomic.StoreInt32(&n.isLoading, 1)			// 表明数据在载入过程中
 	defer atomic.StoreInt32(&n.isLoading, 0)	// 表明数据完成载入过程
 
 	// 获取数据的完整路径
@@ -433,7 +433,6 @@ func (n *NSQD) PersistMetadata() error {
 	return nil
 }
 
-
 // 实例退出处理
 func (n *NSQD) Exit() {
 	if n.tcpListener != nil {
@@ -466,7 +465,7 @@ func (n *NSQD) Exit() {
 	// 等待wg对象下面的四个goroutine退出
 	n.waitGroup.Wait()
 
-	n.dl.Unlock()  // 解锁数据路径
+	n.dl.Unlock() // 解锁数据路径
 }
 
 // GetTopic performs a thread safe operation
@@ -531,6 +530,7 @@ func (n *NSQD) GetTopic(topicName string) *Topic {
 }
 
 // GetExistingTopic gets a topic only if it exists
+// 通过名字获取Topic对象
 func (n *NSQD) GetExistingTopic(topicName string) (*Topic, error) {
 	n.RLock()
 	defer n.RUnlock()
@@ -542,6 +542,7 @@ func (n *NSQD) GetExistingTopic(topicName string) (*Topic, error) {
 }
 
 // DeleteExistingTopic removes a topic only if it exists
+// 通过名字删除Topic对象
 func (n *NSQD) DeleteExistingTopic(topicName string) error {
 	n.RLock()
 	topic, ok := n.topicMap[topicName]
@@ -566,23 +567,34 @@ func (n *NSQD) DeleteExistingTopic(topicName string) error {
 	return nil
 }
 
+// 参考资料《全局唯一MessageID》
+// http://www.zhaoxiaodan.com/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/nsq%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB(6)-%E5%85%A8%E5%B1%80%E5%94%AF%E4%B8%80MessageID.html
+// 不断产生全局唯一的MessageID
 func (n *NSQD) idPump() {
 	factory := &guidFactory{}
 	lastError := time.Unix(0, 0)
 	workerID := n.getOpts().ID
 	for {
+		// 生成GUID，具体算法后面分析（因为可以做成 nsqd 集群, 所以 msgid 关联 nsq id）
 		id, err := factory.NewGUID(workerID)
 		if err != nil {
 			now := time.Now()
 			if now.Sub(lastError) > time.Second {
 				// only print the error once/second
+				//	log 每一秒才输出一次
+
+				// 生成的太快了, 一个ts 中 生成了 4096个 id(sequence)
+				// ts + sequence 满了, 休息一会, 让ts 发生改变
 				n.logf("ERROR: %s", err)
 				lastError = now
 			}
 			runtime.Gosched()
 			continue
 		}
+
+		// 这里利用了 golang 的chan 满了阻塞的特性,如果n.idChan 这个id缓存池满了, 就阻塞不会继续生产
 		select {
+		// 传递id(MessageID)值给idChan，用于创建MessageD对象 msg := NewMessage(<-s.ctx.nsqd.idChan, body)
 		case n.idChan <- id.Hex():
 		case <-n.exitChan:
 			goto exit
@@ -603,12 +615,12 @@ func (n *NSQD) Notify(v interface{}) {
 		// we do not block exit, see issue #123
 		select {
 		case <-n.exitChan:
-		case n.notifyChan <- v:			// 写入notifyChan，然后等待处理
+		case n.notifyChan <- v: // 写入notifyChan，然后等待处理（lookupLoop中会处理n.notifyChan）
 			if !persist {
 				return
 			}
 			n.Lock()
-			err := n.PersistMetadata()	//持久化元数据
+			err := n.PersistMetadata() // 持久化元数据
 			if err != nil {
 				n.logf("ERROR: failed to persist metadata - %s", err)
 			}
@@ -618,6 +630,7 @@ func (n *NSQD) Notify(v interface{}) {
 }
 
 // channels returns a flat slice of all channels in all topics
+// 返回全部的Channel对象
 func (n *NSQD) channels() []*Channel {
 	var channels []*Channel
 	n.RLock()
@@ -636,20 +649,24 @@ func (n *NSQD) channels() []*Channel {
 //
 // 	1 <= pool <= min(num * 0.25, QueueScanWorkerPoolMax)
 //
+// 调整queueScanWorker的goroutines数量
 func (n *NSQD) resizePool(num int, workCh chan *Channel, responseCh chan bool, closeCh chan int) {
-	idealPoolSize := int(float64(num) * 0.25)
+	idealPoolSize := int(float64(num) * 0.25)	// 理想的大小（num为当前topic中Channel的数量）
 	if idealPoolSize < 1 {
-		idealPoolSize = 1
+		idealPoolSize = 1	
 	} else if idealPoolSize > n.getOpts().QueueScanWorkerPoolMax {
+		// 超过最大值就根据最大值进行调整
 		idealPoolSize = n.getOpts().QueueScanWorkerPoolMax
 	}
 	for {
 		if idealPoolSize == n.poolSize {
+			// 如果重新分配的poolSize没有改变我们就什么都不做
 			break
 		} else if idealPoolSize < n.poolSize {
 			// contract
-			closeCh <- 1
-			n.poolSize--
+			// 如果现在需要的idealPoolSize比实际存在的小
+			closeCh <- 1	// queueScanWorker中处理
+			n.poolSize--	
 		} else {
 			// expand
 			n.waitGroup.Wrap(func() {
@@ -694,17 +711,26 @@ func (n *NSQD) queueScanWorker(workCh chan *Channel, responseCh chan bool, close
 //
 // If QueueScanDirtyPercent (default: 25%) of the selected channels were dirty,
 // the loop continues without sleep.
+// queueScanLoop 扫描和处理InFlightQueue和DeferredQueue；
+// 用若干个worker来扫描并处理当前在投递中以及等待重新投递的消息。worker的个数由配置和当前Channel数量共同决定。
 func (n *NSQD) queueScanLoop() {
+	// 控制worker的输入
 	workCh := make(chan *Channel, n.getOpts().QueueScanSelectionCount)
+	// 控制worker的输出
 	responseCh := make(chan bool, n.getOpts().QueueScanSelectionCount)
+	// 控制worker的关闭
 	closeCh := make(chan int)
 
+	// workTicker定时器触发扫描流程。
 	workTicker := time.NewTicker(n.getOpts().QueueScanInterval)
+	// refreshTicker定时器触发更新Channel列表流程。
 	refreshTicker := time.NewTicker(n.getOpts().QueueScanRefreshInterval)
 
+	// 获取当前的Channel集合，并且调用resizePool函数来启动指定数量的worker。
 	channels := n.channels()
 	n.resizePool(len(channels), workCh, responseCh, closeCh)
 
+	// 在循环中，等待两个定时器，workTicker和refreshTicker，定时时间分别由由配置中的QueueScanInterval和QueueScanRefreshInterval决定。
 	for {
 		select {
 		case <-workTicker.C:
@@ -712,6 +738,10 @@ func (n *NSQD) queueScanLoop() {
 				continue
 			}
 		case <-refreshTicker.C:
+			/*
+				refreshTicker定时器触发更新Channel列表流程。
+					这个流程比较简单，先获取一次Channel列表，再调用resizePool重新分配worker。
+			*/
 			channels = n.channels()
 			n.resizePool(len(channels), workCh, responseCh, closeCh)
 			continue
@@ -725,6 +755,14 @@ func (n *NSQD) queueScanLoop() {
 		}
 
 	loop:
+
+		/*
+			workTicker定时器触发扫描流程。
+				1: nsqd采用了Redis的probabilistic expiration算法来进行扫描。
+				2: 首先从所有Channel中随机选取部分Channel，然后遍历被选取的Channel，投到workerChan中，并且等待反馈结果，结果有两种，dirty和非dirty，
+					如果dirty的比例超过配置中设定的QueueScanDirtyPercent，那么不进入休眠，继续扫描，如果比例较低，则重新等待定时器触发下一轮扫描。
+				3: 这种机制可以在保证处理延时较低的情况下减少对CPU资源的浪费。
+		*/
 		for _, i := range util.UniqRands(num, len(channels)) {
 			workCh <- channels[i]
 		}
@@ -737,9 +775,9 @@ func (n *NSQD) queueScanLoop() {
 		}
 
 		if float64(numDirty)/float64(num) > n.getOpts().QueueScanDirtyPercent {
-			goto loop
+			goto loop	// 如果消息投递比例高于设定值，就继续扫描
 		}
-	}
+	}	// end of for 
 
 exit:
 	n.logf("QUEUESCAN: closing")

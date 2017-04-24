@@ -105,7 +105,7 @@ func NewChannel(topicName string, channelName string, ctx *context,
 
 	if strings.HasSuffix(channelName, "#ephemeral") {
 		c.ephemeral = true
-		c.backend = newDummyBackendQueue()	// 写入该队列的数据都是丢弃的
+		c.backend = newDummyBackendQueue() // 写入该队列的数据都是丢弃的
 	} else {
 		// backend names, for uniqueness, automatically include the topic...
 		// 获取backend的名字,格式为<topic>:<channel>
@@ -178,7 +178,7 @@ func (c *Channel) exit(deleted bool) error {
 		// since we are explicitly deleting a channel (not just at system exit time)
 		// de-register this from the lookupd
 		// 删除Channel需要通知NSQD
-		c.ctx.nsqd.Notify(c)		// 修改持久化元数据
+		c.ctx.nsqd.Notify(c) // 修改持久化元数据
 	} else {
 		c.ctx.nsqd.logf("CHANNEL(%s): closing", c.name)
 	}
@@ -191,7 +191,7 @@ func (c *Channel) exit(deleted bool) error {
 	}
 	c.RUnlock()
 
-	close(c.exitChan)	// 通知goroutine退出
+	close(c.exitChan) // 通知goroutine退出
 
 	if deleted {
 		// empty the queue (deletes the backend files, too)
@@ -213,7 +213,7 @@ func (c *Channel) Empty() error {
 	c.initPQ() // 这个是重新生成新的队列
 
 	for _, client := range c.clients {
-		client.Empty() 
+		client.Empty()
 	}
 
 	clientMsgChan := c.clientMsgChan
@@ -343,6 +343,7 @@ func (c *Channel) PutMessage(m *Message) error {
 	atomic.AddUint64(&c.messageCount, 1)
 	return nil
 }
+
 // 往channel中写入消息
 func (c *Channel) put(m *Message) error {
 	select {
@@ -535,6 +536,7 @@ func (c *Channel) popInFlightMessage(clientID int64, id MessageID) (*Message, er
 	c.inFlightMutex.Unlock()
 	return msg, nil
 }
+
 // 消息添加到inFlightPQ队列
 func (c *Channel) addToInFlightPQ(msg *Message) {
 	c.inFlightMutex.Lock()
@@ -568,6 +570,7 @@ func (c *Channel) pushDeferredMessage(item *pqueue.Item) error {
 	c.deferredMutex.Unlock()
 	return nil
 }
+
 // 从deferredMessages中删除消息
 func (c *Channel) popDeferredMessage(id MessageID) (*pqueue.Item, error) {
 	c.deferredMutex.Lock()
@@ -581,6 +584,7 @@ func (c *Channel) popDeferredMessage(id MessageID) (*pqueue.Item, error) {
 	c.deferredMutex.Unlock()
 	return item, nil
 }
+
 // 添加信息到deferredPQ
 func (c *Channel) addToDeferredPQ(item *pqueue.Item) {
 	c.deferredMutex.Lock()
@@ -619,7 +623,7 @@ func (c *Channel) messagePump() {
 
 		// 在消息投递前会将bufferedCount置为1，在投递后置为0。该变量在Depth函数中被调用。
 		atomic.StoreInt32(&c.bufferedCount, 1)
-		c.clientMsgChan <- msg	// 发送数据给clientMsgChan，在nsqd\protocol_v2.go的messagePump中处理
+		c.clientMsgChan <- msg // 发送数据给clientMsgChan，在nsqd\protocol_v2.go的messagePump中处理
 		atomic.StoreInt32(&c.bufferedCount, 0)
 		// the client will call back to mark as in-flight w/ its info
 	}
@@ -630,6 +634,7 @@ exit:
 }
 
 // 处理队列deferredPQ
+// 返回值为false的情况：没有获取到Message并投递即为false
 func (c *Channel) processDeferredQueue(t int64) bool {
 	c.exitMutex.RLock()
 	defer c.exitMutex.RUnlock()
@@ -662,6 +667,7 @@ exit:
 }
 
 // 处理InFlightQueue
+// 返回值为false的情况：没有获取到Message并投递即为false
 func (c *Channel) processInFlightQueue(t int64) bool {
 	c.exitMutex.RLock()
 	defer c.exitMutex.RUnlock()

@@ -13,40 +13,40 @@ import (
 // 参数信息
 type Options struct {
 	// basic options
-	ID                     int64    `flag:"worker-id" cfg:"id"`
-	Verbose                bool     `flag:"verbose"`		// 详细的日志输出
+	ID                     int64    `flag:"worker-id" cfg:"id"` // NSQD实例的ID
+	Verbose                bool     `flag:"verbose"`            // 详细的日志输出
 	TCPAddress             string   `flag:"tcp-address"`
 	HTTPAddress            string   `flag:"http-address"`
 	HTTPSAddress           string   `flag:"https-address"`
 	BroadcastAddress       string   `flag:"broadcast-address"`
-	NSQLookupdTCPAddresses []string `flag:"lookupd-tcp-address" cfg:"nsqlookupd_tcp_addresses"`	// lookupd的地址
-	AuthHTTPAddresses      []string `flag:"auth-http-address" cfg:"auth_http_addresses"`		// 认证服务地址
+	NSQLookupdTCPAddresses []string `flag:"lookupd-tcp-address" cfg:"nsqlookupd_tcp_addresses"` // lookupd的地址
+	AuthHTTPAddresses      []string `flag:"auth-http-address" cfg:"auth_http_addresses"`        // 认证服务地址
 
 	// diskqueue options
-	DataPath        string        `flag:"data-path"`		// 持久化数据的路径
-	MemQueueSize    int64         `flag:"mem-queue-size"`		// Message Channel的最大缓冲
-	MaxBytesPerFile int64         `flag:"max-bytes-per-file"`	// 每个文件最大的字节数
+	DataPath        string        `flag:"data-path"`          // 持久化数据的路径
+	MemQueueSize    int64         `flag:"mem-queue-size"`     // Message Channel的最大缓冲
+	MaxBytesPerFile int64         `flag:"max-bytes-per-file"` // 每个文件最大的字节数
 	SyncEvery       int64         `flag:"sync-every"`
 	SyncTimeout     time.Duration `flag:"sync-timeout"`
 
-	QueueScanInterval        time.Duration
-	QueueScanRefreshInterval time.Duration
-	QueueScanSelectionCount  int
-	QueueScanWorkerPoolMax   int
-	QueueScanDirtyPercent    float64
+	QueueScanInterval        time.Duration // workTicker定时器时间（）
+	QueueScanRefreshInterval time.Duration // refreshTicker定时器时间（更新Channel列表，并重新分配worker）
+	QueueScanSelectionCount  int           // 每次扫描最多选择的Channel数量
+	QueueScanWorkerPoolMax   int           // queueScanWorker的goroutines的最大数量
+	QueueScanDirtyPercent    float64       // 消息投递的比例
 
 	// msg and command options
 	MsgTimeout    time.Duration `flag:"msg-timeout" arg:"1ms"`
 	MaxMsgTimeout time.Duration `flag:"max-msg-timeout"`
-	MaxMsgSize    int64         `flag:"max-msg-size" deprecated:"max-message-size" cfg:"max_msg_size"`	// 消息的最大长度
-	MaxBodySize   int64         `flag:"max-body-size"`													// 消息体的最大长度
+	MaxMsgSize    int64         `flag:"max-msg-size" deprecated:"max-message-size" cfg:"max_msg_size"` // 消息的最大长度
+	MaxBodySize   int64         `flag:"max-body-size"`                                                 // 消息体的最大长度
 	MaxReqTimeout time.Duration `flag:"max-req-timeout"`
 	ClientTimeout time.Duration
 
 	// client overridable configuration options
-	MaxHeartbeatInterval   time.Duration `flag:"max-heartbeat-interval"`					// 心跳超时
-	MaxRdyCount            int64         `flag:"max-rdy-count"`								// 允许客户端一次最多接收的消息数量
-	MaxOutputBufferSize    int64         `flag:"max-output-buffer-size"`					// tcp writer对象的缓存
+	MaxHeartbeatInterval   time.Duration `flag:"max-heartbeat-interval"` // 心跳超时
+	MaxRdyCount            int64         `flag:"max-rdy-count"`          // 允许客户端一次最多接收的消息数量
+	MaxOutputBufferSize    int64         `flag:"max-output-buffer-size"` // tcp writer对象的缓存
 	MaxOutputBufferTimeout time.Duration `flag:"max-output-buffer-timeout"`
 
 	// statsd integration
