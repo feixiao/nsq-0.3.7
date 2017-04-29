@@ -13,16 +13,19 @@ import (
 	"time"
 )
 
+// 带有超时作用的连接对象
 type deadlinedConn struct {
 	Timeout time.Duration
 	net.Conn
 }
 
+// 带有超时的io.Reader接口实现
 func (c *deadlinedConn) Read(b []byte) (n int, err error) {
 	c.Conn.SetReadDeadline(time.Now().Add(c.Timeout))
 	return c.Conn.Read(b)
 }
 
+// 带有超时的io.Writer接口实现
 func (c *deadlinedConn) Write(b []byte) (n int, err error) {
 	c.Conn.SetWriteDeadline(time.Now().Add(c.Timeout))
 	return c.Conn.Write(b)
@@ -30,6 +33,7 @@ func (c *deadlinedConn) Write(b []byte) (n int, err error) {
 
 // A custom http.Transport with support for deadline timeouts
 func NewDeadlineTransport(timeout time.Duration) *http.Transport {
+	// 带有超时机制的HTTP传输对象创建
 	transport := &http.Transport{
 		Dial: func(netw, addr string) (net.Conn, error) {
 			c, err := net.DialTimeout(netw, addr, timeout)
@@ -42,10 +46,12 @@ func NewDeadlineTransport(timeout time.Duration) *http.Transport {
 	return transport
 }
 
+// HTTP请求的客户端对象
 type Client struct {
 	c *http.Client
 }
 
+// 创建HTTP客户端对象
 func NewClient(tlsConfig *tls.Config) *Client {
 	transport := NewDeadlineTransport(2 * time.Second)
 	transport.TLSClientConfig = tlsConfig
@@ -63,25 +69,29 @@ func NewClient(tlsConfig *tls.Config) *Client {
 // TODO: deprecated, remove in 1.0 (replace calls with GETV1)
 func (c *Client) NegotiateV1(endpoint string, v interface{}) error {
 retry:
+	// 创建请求对象
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Add("Accept", "application/vnd.nsq; version=1.0")
-
+	// 发送请求并且等待回复
 	resp, err := c.c.Do(req)
 	if err != nil {
 		return err
 	}
 
+	// 读取回复内容
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	// 如果不是200就继续请求
 	if resp.StatusCode != 200 {
 		if resp.StatusCode == 403 && !strings.HasPrefix(endpoint, "https") {
+			// 如果状态值为403,同时url不带https，那么创建https请求
 			endpoint, err = httpsEndpoint(endpoint, body)
 			if err != nil {
 				return err
@@ -91,6 +101,7 @@ retry:
 		return fmt.Errorf("got response %s %q", resp.Status, body)
 	}
 
+	// 没有消息体
 	if len(body) == 0 {
 		body = []byte("{}")
 	}
@@ -111,7 +122,7 @@ retry:
 		body = u.Data
 	}
 
-	return json.Unmarshal(body, v)
+	return json.Unmarshal(body, v) // 调用者通过v获取到内容
 }
 
 // GETV1 is a helper function to perform a V1 HTTP request

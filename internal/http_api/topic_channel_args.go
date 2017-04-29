@@ -6,10 +6,12 @@ import (
 	"github.com/nsqio/nsq/internal/protocol"
 )
 
+// 定义getter接口
 type getter interface {
 	Get(key string) (string, error)
 }
 
+// 检验topic内容的正确性
 func GetTopicChannelArgs(rp getter) (string, string, error) {
 	topicName, err := rp.Get("topic")
 	if err != nil {
