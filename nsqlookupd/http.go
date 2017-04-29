@@ -28,9 +28,13 @@ func newHTTPServer(ctx *Context) *httpServer {
 	router.MethodNotAllowed = http_api.LogMethodNotAllowedHandler(ctx.nsqlookupd.opts.Logger)
 	s := &httpServer{
 		ctx:    ctx,
-		router: router,   // router传入
+		router: router, // router传入
 	}
 
+	// 函数的处理过程：
+	// 	http_api.PlainText
+	//			--> log
+	//				--> s.pingHandler
 	router.Handle("GET", "/ping", http_api.Decorate(s.pingHandler, log, http_api.PlainText))
 
 	// v1 negotiate
@@ -49,6 +53,7 @@ func newHTTPServer(ctx *Context) *httpServer {
 
 	// deprecated, v1 negotiate 废弃的接口
 	router.Handle("GET", "/info", http_api.Decorate(s.doInfo, log, http_api.NegotiateVersion))
+	//
 	router.Handle("POST", "/create_topic", http_api.Decorate(s.doCreateTopic, log, http_api.NegotiateVersion))
 	router.Handle("POST", "/delete_topic", http_api.Decorate(s.doDeleteTopic, log, http_api.NegotiateVersion))
 	router.Handle("POST", "/create_channel", http_api.Decorate(s.doCreateChannel, log, http_api.NegotiateVersion))
@@ -64,7 +69,7 @@ func newHTTPServer(ctx *Context) *httpServer {
 	router.HandlerFunc("GET", "/debug/pprof", pprof.Index)
 	router.HandlerFunc("GET", "/debug/pprof/cmdline", pprof.Cmdline)
 	router.HandlerFunc("GET", "/debug/pprof/symbol", pprof.Symbol)
-	router.HandlerFunc("POST", "/debug/pprof/symbol", pprof.Symbol)	// for what ？？
+	router.HandlerFunc("POST", "/debug/pprof/symbol", pprof.Symbol) // for what ？？
 	router.HandlerFunc("GET", "/debug/pprof/profile", pprof.Profile)
 	router.Handler("GET", "/debug/pprof/heap", pprof.Handler("heap"))
 	router.Handler("GET", "/debug/pprof/goroutine", pprof.Handler("goroutine"))
@@ -155,7 +160,6 @@ func (s *httpServer) doLookup(w http.ResponseWriter, req *http.Request, ps httpr
 	}, nil
 }
 
-
 // POST /create_topic
 // 创建topic
 func (s *httpServer) doCreateTopic(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
@@ -241,7 +245,6 @@ func (s *httpServer) doTombstoneTopicProducer(w http.ResponseWriter, req *http.R
 
 	return nil, nil
 }
-
 
 // 删除channel
 func (s *httpServer) doCreateChannel(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
