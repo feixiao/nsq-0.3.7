@@ -37,6 +37,8 @@ type errStore struct {
 	err error
 }
 
+// http://nsq.io/components/nsqd.html
+
 type NSQD struct {
 	// 64bit atomic vars need to be first for proper alignment on 32bit platforms
 	clientIDSequence int64
@@ -107,7 +109,7 @@ func New(opts *Options) *NSQD {
 		os.Exit(1)
 	}
 
-	// MaxDeflateLevel for what ???
+	// 最大的压缩比率等级
 	if opts.MaxDeflateLevel < 1 || opts.MaxDeflateLevel > 9 {
 		n.logf("FATAL: --max-deflate-level must be [1,9]")
 		os.Exit(1)

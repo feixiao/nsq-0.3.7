@@ -13,19 +13,19 @@ import (
 )
 
 type NSQLookupd struct {
-	sync.RWMutex				// 读写锁
-	opts         *Options			// nsqlookupd 配置信息 定义文件路径为nsq/nsqlookupd/options.go
+	sync.RWMutex          // 读写锁
+	opts         *Options // nsqlookupd 配置信息 定义文件路径为nsq/nsqlookupd/options.go
 	tcpListener  net.Listener
 	httpListener net.Listener
-	waitGroup    util.WaitGroupWrapper   	// WaitGroup 典型应用 用于开启两个goroutine，一个监听HTTP 一个监听TCP
-	DB           *RegistrationDB		// product 注册数据库 具体分析后面章节再讲
+	waitGroup    util.WaitGroupWrapper // WaitGroup 典型应用 用于开启两个goroutine，一个监听HTTP 一个监听TCP
+	DB           *RegistrationDB       // product 注册数据库 具体分析后面章节再讲
 }
 
 // 初始化NSQLookupd实例
 func New(opts *Options) *NSQLookupd {
 	n := &NSQLookupd{
 		opts: opts,
-		DB:   NewRegistrationDB(),  	// 初始化DB实例
+		DB:   NewRegistrationDB(), // 初始化DB实例
 	}
 	n.logf(version.String("nsqlookupd"))
 	return n
@@ -61,7 +61,6 @@ func (l *NSQLookupd) Main() {
 		// 然后通过tcpServer中的Handle分析报文，然后处理相关的协议
 		protocol.TCPServer(tcpListener, tcpServer, l.opts.Logger)
 	}) // 把tcpServer加入到waitGroup
-
 
 	// http服务
 	httpListener, err := net.Listen("tcp", l.opts.HTTPAddress)

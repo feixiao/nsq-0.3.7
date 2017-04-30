@@ -14,7 +14,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/judwhite/go-svc/svc"
-	"github.com/mreiferson/go-options"
 	"github.com/nsqio/nsq/internal/app"
 	"github.com/nsqio/nsq/internal/version"
 	"github.com/nsqio/nsq/nsqd"
@@ -77,6 +76,7 @@ func (t *tlsVersionOption) String() string {
 func nsqFlagset() *flag.FlagSet {
 	flagSet := flag.NewFlagSet("nsqd", flag.ExitOnError)
 
+	// 在options.go中已经注释
 	// basic options
 	flagSet.String("config", "", "path to config file")
 	flagSet.Bool("version", false, "print version string")

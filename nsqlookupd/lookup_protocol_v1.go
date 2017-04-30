@@ -18,7 +18,7 @@ import (
 )
 
 type LookupProtocolV1 struct {
-	ctx *Context	// 一直贯穿整个代码的Context，具体可翻看前面章节
+	ctx *Context // 一直贯穿整个代码的Context，具体可翻看前面章节
 }
 
 // 协议的主要处理函数
@@ -26,7 +26,7 @@ func (p *LookupProtocolV1) IOLoop(conn net.Conn) error {
 	var err error
 	var line string
 
-	client := NewClientV1(conn)		// 新建一个client版本为V1
+	client := NewClientV1(conn) // 新建一个client版本为V1
 	// 由client 创建一个 带有buffer 的Reader 默认 buffer size 为4096，
 	// 这里的NewReader参数为io.Reader 接口，为何net.Conn接口也能作为参数呢？
 	// 因为net.Conn 接口其实也是实现了io.Reader接口了
@@ -50,7 +50,7 @@ func (p *LookupProtocolV1) IOLoop(conn net.Conn) error {
 			}
 			p.ctx.nsqlookupd.logf("ERROR: [%s] - %s%s", client, err, ctx)
 
-			_, sendErr := protocol.SendResponse(client, []byte(err.Error()))  // 返回错误给client
+			_, sendErr := protocol.SendResponse(client, []byte(err.Error())) // 返回错误给client
 			if sendErr != nil {
 				p.ctx.nsqlookupd.logf("ERROR: [%s] - %s%s", client, sendErr, ctx)
 				break
@@ -63,9 +63,8 @@ func (p *LookupProtocolV1) IOLoop(conn net.Conn) error {
 			continue
 		}
 
-
 		if response != nil {
-			_, err = protocol.SendResponse(client, response)  // 返回命令处理结果给client
+			_, err = protocol.SendResponse(client, response) // 返回命令处理结果给client
 			if err != nil {
 				break
 			}
@@ -89,13 +88,13 @@ func (p *LookupProtocolV1) IOLoop(conn net.Conn) error {
 // 这个方法就是执行相应的命令动作 有 PING IDENTIFY REGISTER UNREGISTER 这四个类型
 func (p *LookupProtocolV1) Exec(client *ClientV1, reader *bufio.Reader, params []string) ([]byte, error) {
 	switch params[0] {
-	case "PING":		// 用于client的心跳处理
+	case "PING": // 用于client的心跳处理
 		return p.PING(client, params)
-	case "IDENTIFY": 	// 用于client端的信息注册，执行PING REGISTER UNREGISTER 命令前必须先执行此命令
+	case "IDENTIFY": // 用于client端的信息注册，执行PING REGISTER UNREGISTER 命令前必须先执行此命令
 		return p.IDENTIFY(client, reader, params[1:])
-	case "REGISTER":	// 用于client端注册topic以及channel的命令
+	case "REGISTER": // 用于client端注册topic以及channel的命令
 		return p.REGISTER(client, reader, params[1:])
-	case "UNREGISTER":      // 执行与REGISTER命令相反的逻辑
+	case "UNREGISTER": // 执行与REGISTER命令相反的逻辑
 		return p.UNREGISTER(client, reader, params[1:])
 	}
 	return nil, protocol.NewFatalClientErr(nil, "E_INVALID", fmt.Sprintf("invalid command %s", params[0]))
@@ -165,7 +164,6 @@ func (p *LookupProtocolV1) REGISTER(client *ClientV1, reader *bufio.Reader, para
 
 	return []byte("OK"), nil
 }
-
 
 // UNREGISTER命令用于取消注册topic 或取消注册某个topic下的某一个channel
 
@@ -238,7 +236,7 @@ func (p *LookupProtocolV1) UNREGISTER(client *ClientV1, reader *bufio.Reader, pa
 func (p *LookupProtocolV1) IDENTIFY(client *ClientV1, reader *bufio.Reader, params []string) ([]byte, error) {
 	var err error
 
-	if client.peerInfo != nil {  // 如果有该client 的PeerInfo数据则返回错误
+	if client.peerInfo != nil { // 如果有该client 的PeerInfo数据则返回错误
 		return nil, protocol.NewFatalClientErr(err, "E_INVALID", "cannot IDENTIFY again")
 	}
 
@@ -249,15 +247,15 @@ func (p *LookupProtocolV1) IDENTIFY(client *ClientV1, reader *bufio.Reader, para
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "IDENTIFY failed to read body size")
 	}
 
-	body := make([]byte, bodyLen) 	   // 初始化一个producer PeerInfo json数据长度的bytes
+	body := make([]byte, bodyLen)      // 初始化一个producer PeerInfo json数据长度的bytes
 	_, err = io.ReadFull(reader, body) // 读取所有的json数据
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "IDENTIFY failed to read body")
 	}
 
 	// body is a json structure with producer information
-	peerInfo := PeerInfo{id: client.RemoteAddr().String()}  // 实例化一个PeerInfo
-	err = json.Unmarshal(body, &peerInfo)   // 解析producer PeerInfo json数据到peerInfo
+	peerInfo := PeerInfo{id: client.RemoteAddr().String()} // 实例化一个PeerInfo
+	err = json.Unmarshal(body, &peerInfo)                  // 解析producer PeerInfo json数据到peerInfo
 	if err != nil {
 		// json 数据解析失败 返回错误
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "IDENTIFY failed to decode JSON body")

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nsqio/go-nsq"
 	"github.com/nsqio/nsq/internal/version"
 )
 
@@ -16,11 +15,11 @@ import (
 func connectCallback(n *NSQD, hostname string, syncTopicChan chan *lookupPeer) func(*lookupPeer) {
 	return func(lp *lookupPeer) {
 		ci := make(map[string]interface{})
-		ci["version"] = version.Binary			// nsqd的版本号
-		ci["tcp_port"] = n.RealTCPAddr().Port		// tcp服务的端口
-		ci["http_port"] = n.RealHTTPAddr().Port		// http服务的端口
+		ci["version"] = version.Binary          // nsqd的版本号
+		ci["tcp_port"] = n.RealTCPAddr().Port   // tcp服务的端口
+		ci["http_port"] = n.RealHTTPAddr().Port // http服务的端口
 		ci["hostname"] = hostname
-		ci["broadcast_address"] = n.getOpts().BroadcastAddress		// for what ??
+		ci["broadcast_address"] = n.getOpts().BroadcastAddress // for what ??
 
 		// https://github.com/feixiao/go-nsq/blob/master/command.go
 		// 发送认证命令，具体生成的命令，请查看上述源码
@@ -54,12 +53,12 @@ func connectCallback(n *NSQD, hostname string, syncTopicChan chan *lookupPeer) f
 }
 
 func (n *NSQD) lookupLoop() {
-	var lookupPeers []*lookupPeer			// 保存完成连接的lookupd对象信息
-	var lookupAddrs []string			// 保存已经连接好的lookupd地址信息
+	var lookupPeers []*lookupPeer // 保存完成连接的lookupd对象信息
+	var lookupAddrs []string      // 保存已经连接好的lookupd地址信息
 	syncTopicChan := make(chan *lookupPeer)
 	connect := true
 
-	hostname, err := os.Hostname()			// 获取host名字
+	hostname, err := os.Hostname() // 获取host名字
 	if err != nil {
 		n.logf("FATAL: failed to get hostname - %s", err)
 		os.Exit(1)
@@ -72,7 +71,7 @@ func (n *NSQD) lookupLoop() {
 			// 连接全部的lookupd
 			for _, host := range n.getOpts().NSQLookupdTCPAddresses {
 				if in(host, lookupAddrs) {
-					continue	// 如果已经完成连接，那么我们继续下一个
+					continue // 如果已经完成连接，那么我们继续下一个
 				}
 				n.logf("LOOKUP(%s): adding peer", host)
 				// 创建连接到lookupd的连接对象
@@ -97,7 +96,7 @@ func (n *NSQD) lookupLoop() {
 					n.logf("LOOKUPD(%s): ERROR %s - %s", lookupPeer, cmd, err)
 				}
 			}
-		case val := <-n.notifyChan:
+		case val := <-n.notifyChan: //
 			var cmd *nsq.Command
 			var branch string
 
