@@ -17,27 +17,27 @@ type Topic struct {
 
 	sync.RWMutex
 	// topic的名字
-	name              string
+	name string
 	// 一个Topic实例下有多个Channel
-	channelMap        map[string]*Channel
+	channelMap map[string]*Channel
 	// 队列
-	backend           BackendQueue
+	backend BackendQueue
 
 	// 如果想要往该topic发布消息，只需要将消息写到Topic.memoryMsgChan中
 	// 创建Topic时会开启一个新的goroutine(messagePump)负责监听Topic.memoryMsgChan，当有新消息时会将将消息复制N份发送到该Topic下的所有Channel中
-	memoryMsgChan     chan *Message
+	memoryMsgChan chan *Message
 
 	// 通知相关的goroutine退出
-	exitChan          chan int
+	exitChan chan int
 
-	channelUpdateChan chan int		// 通知channelMap的更新，在messagePump中处理
+	channelUpdateChan chan int // 通知channelMap的更新，在messagePump中处理
 	// 等待全部的goroutine退出
-	waitGroup         util.WaitGroupWrapper
+	waitGroup util.WaitGroupWrapper
 
 	// 标记是否退出
-	exitFlag          int32
+	exitFlag int32
 
-	ephemeral      	  bool			// 临时(代码的意思是如果设置为ephemeral的topic在不存在channel的情况下面要销毁 )
+	ephemeral bool // 临时(代码的意思是如果设置为ephemeral的topic在不存在channel的情况下面要销毁 )
 
 	// 删除topic的回调
 	deleteCallback func(*Topic)
@@ -54,9 +54,9 @@ type Topic struct {
 // 创建Topic对象（主题名字、上下文对象(NSQD)、删除主题回调对象）
 func NewTopic(topicName string, ctx *context, deleteCallback func(*Topic)) *Topic {
 	t := &Topic{
-		name:              topicName,
+		name: topicName,
 		// 该Topic下的所有Channel
-		channelMap:        make(map[string]*Channel),
+		channelMap: make(map[string]*Channel),
 		// 消息到达的数量，可以通过MemQueueSize配置大小
 		memoryMsgChan:     make(chan *Message, ctx.nsqd.getOpts().MemQueueSize),
 		exitChan:          make(chan int),
@@ -81,7 +81,7 @@ func NewTopic(topicName string, ctx *context, deleteCallback func(*Topic)) *Topi
 			ctx.nsqd.getOpts().DataPath,
 			ctx.nsqd.getOpts().MaxBytesPerFile,
 			int32(minValidMsgLength),
-			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength,	// 大小为什么是这样的需要分析message结构
+			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength, // 大小为什么是这样的需要分析message结构
 			ctx.nsqd.getOpts().SyncEvery,
 			ctx.nsqd.getOpts().SyncTimeout,
 			ctx.nsqd.getOpts().Logger)
@@ -114,7 +114,7 @@ func (t *Topic) GetChannel(channelName string) *Channel {
 		// update messagePump state
 		// 如果是新，那么更新channel
 		select {
-		case t.channelUpdateChan <- 1:  // 处理channelMap的更新
+		case t.channelUpdateChan <- 1: // 处理channelMap的更新
 		case <-t.exitChan:
 		}
 	}
@@ -197,6 +197,7 @@ func (t *Topic) PutMessage(m *Message) error {
 		return errors.New("exiting")
 	}
 
+	// 发送消息
 	err := t.put(m)
 	if err != nil {
 		return err
@@ -227,7 +228,7 @@ func (t *Topic) PutMessages(msgs []*Message) error {
 // 将消息写到topic的channel中，如果topic的memoryMsgChan已满则将topic写到磁盘文件中
 func (t *Topic) put(m *Message) error {
 	select {
-	case t.memoryMsgChan <- m:  // 发送消息
+	case t.memoryMsgChan <- m: // 发送消息
 	default:
 		// 如果memoryMsgChan已经满了
 
@@ -237,7 +238,7 @@ func (t *Topic) put(m *Message) error {
 		err := writeMessageToBackend(b, m, t.backend)
 		// 返回给bufferBool
 		bufferPoolPut(b)
-		t.ctx.nsqd.SetHealth(err)	// 如果出错就更新错误值
+		t.ctx.nsqd.SetHealth(err) // 如果出错就更新错误值
 		if err != nil {
 			t.ctx.nsqd.logf(
 				"TOPIC(%s) ERROR: failed to write message to backend - %s",
@@ -267,7 +268,7 @@ func (t *Topic) messagePump() {
 	t.RLock()
 	// 取出该Topic下所有的Channel
 	for _, c := range t.channelMap {
-		chans = append(chans, c)  // 保存topic下面的全部channel，下面用于分发数据
+		chans = append(chans, c) // 保存topic下面的全部channel，下面用于分发数据
 	}
 	t.RUnlock()
 
@@ -294,7 +295,7 @@ func (t *Topic) messagePump() {
 			chans = chans[:0]
 			t.RLock()
 			for _, c := range t.channelMap {
-				chans = append(chans, c)	// 因为channelMap已经被更新，我们需要更新chans
+				chans = append(chans, c) // 因为channelMap已经被更新，我们需要更新chans
 			}
 			t.RUnlock()
 			if len(chans) == 0 || t.IsPaused() {
@@ -374,17 +375,16 @@ func (t *Topic) exit(deleted bool) error {
 		// since we are explicitly deleting a topic (not just at system exit time)
 		// de-register this from the lookupd
 
-		t.ctx.nsqd.Notify(t)  // 通知NSQD，这个topic被删除了，更新元数据
+		t.ctx.nsqd.Notify(t) // 通知NSQD，这个topic被删除了，更新元数据
 	} else {
 		t.ctx.nsqd.logf("TOPIC(%s): closing", t.name)
 	}
 
-	close(t.exitChan)	// 通知相关goroutine退出
+	close(t.exitChan) // 通知相关goroutine退出
 
 	// synchronize the close of messagePump()
 	// 等待goroutine退出
 	t.waitGroup.Wait()
-
 
 	// 如果是删除操作，删除channelMap，清理数据
 	if deleted {
@@ -418,14 +418,14 @@ func (t *Topic) exit(deleted bool) error {
 func (t *Topic) Empty() error {
 	for {
 		select {
-		case <-t.memoryMsgChan:  // 情况通道里面的数据
+		case <-t.memoryMsgChan: // 情况通道里面的数据
 		default:
 			goto finish
 		}
 	}
 
 finish:
-	return t.backend.Empty()	// 清理BackendQueue上面的数据
+	return t.backend.Empty() // 清理BackendQueue上面的数据
 }
 
 func (t *Topic) flush() error {
@@ -481,6 +481,7 @@ func (t *Topic) AggregateChannelE2eProcessingLatency() *quantile.Quantile {
 func (t *Topic) Pause() error {
 	return t.doPause(true)
 }
+
 // 重启操作
 func (t *Topic) UnPause() error {
 	return t.doPause(false)
@@ -496,7 +497,7 @@ func (t *Topic) doPause(pause bool) error {
 	}
 
 	select {
-	case t.pauseChan <- pause:		// 请求暂停/重启操作，messagePump中处理
+	case t.pauseChan <- pause: // 请求暂停/重启操作，messagePump中处理
 	case <-t.exitChan:
 	}
 

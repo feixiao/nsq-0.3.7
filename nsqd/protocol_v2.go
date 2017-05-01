@@ -49,7 +49,6 @@ func (p *protocolV2) IOLoop(conn net.Conn) error {
 	go p.messagePump(client, messagePumpStartedChan)
 	<-messagePumpStartedChan // 确保messagePump已经运行才继续往下走
 
-
 	for {
 		// 如果超过client.HeartbeatInterval * 2时间间隔内未收到客户端发送的命令，说明连接处问题了，需要关闭此链接
 		// 正常情况下每隔HeartbeatInterval时间客户端都会发送一个心跳回复。
@@ -475,7 +474,6 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 		return nil, protocol.NewFatalClientErr(err, "E_IDENTIFY_FAILED", "IDENTIFY failed "+err.Error())
 	}
 
-
 	// ???
 	if tlsv1 {
 		p.ctx.nsqd.logf("PROTOCOL(V2): [%s] upgrading connection to TLS", client)
@@ -519,7 +517,9 @@ func (p *protocolV2) IDENTIFY(client *clientV2, params [][]byte) ([]byte, error)
 	return nil, nil
 }
 
-
+// If the IDENTIFY response indicates auth_required=true the client must send AUTH before any SUB, PUB or MPUB commands.
+// If auth_required is not present (or false), a client must not authorize.
+// 认证阶段如果auth_required=true，那么客户端必须在其他明确之前先进行认证。
 func (p *protocolV2) AUTH(client *clientV2, params [][]byte) ([]byte, error) {
 
 	// 只有在stateInit才处理AUTH
@@ -620,10 +620,11 @@ func (p *protocolV2) CheckAuth(client *clientV2, cmd, topicName, channelName str
 				fmt.Sprintf("AUTH failed for %s on %q %q", cmd, topicName, channelName))
 		}
 	}
-	return nil  // 不想要认证，
+	return nil // 不想要认证，
 }
 
 // Subscribe to a topic/channel
+// 订阅某个topic下面的某个channel
 func (p *protocolV2) SUB(client *clientV2, params [][]byte) ([]byte, error) {
 	if atomic.LoadInt32(&client.State) != stateInit {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot SUB in current state")
@@ -652,7 +653,6 @@ func (p *protocolV2) SUB(client *clientV2, params [][]byte) ([]byte, error) {
 			fmt.Sprintf("SUB channel name %q is not valid", channelName))
 	}
 
-
 	if err := p.CheckAuth(client, "SUB", topicName, channelName); err != nil {
 		return nil, err
 	}
@@ -668,7 +668,7 @@ func (p *protocolV2) SUB(client *clientV2, params [][]byte) ([]byte, error) {
 	client.Channel = channel
 
 	// update message pump
-	client.SubEventChan <- channel  // 触发SubEvent，处理的逻辑是将SubEventChan设置为nil
+	client.SubEventChan <- channel // 触发SubEvent，处理的逻辑是将SubEventChan设置为nil
 
 	return okBytes, nil
 }
@@ -711,6 +711,7 @@ func (p *protocolV2) RDY(client *clientV2, params [][]byte) ([]byte, error) {
 			fmt.Sprintf("RDY count %d out of range 0-%d", count, p.ctx.nsqd.getOpts().MaxRdyCount))
 	}
 
+	// 设置本次客户端最多接收的消息数量
 	client.SetReadyCount(count)
 
 	return nil, nil
@@ -735,6 +736,7 @@ func (p *protocolV2) FIN(client *clientV2, params [][]byte) ([]byte, error) {
 	}
 
 	// 告知Channel这个id的消息已经被成功的处理
+	// 具体处理方式就是从inFlightMessages队列中移除消息
 	err = client.Channel.FinishMessage(client.ID, *id)
 	if err != nil {
 		return nil, protocol.NewClientErr(err, "E_FIN_FAILED",
@@ -746,16 +748,21 @@ func (p *protocolV2) FIN(client *clientV2, params [][]byte) ([]byte, error) {
 	return nil, nil
 }
 
+// Re-queue a message (indicate failure to process)
+// 要求nsqd重新排序该消息(暗示消息出来出错)
 func (p *protocolV2) REQ(client *clientV2, params [][]byte) ([]byte, error) {
 	state := atomic.LoadInt32(&client.State)
+	// 验证状态
 	if state != stateSubscribed && state != stateClosing {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot REQ in current state")
 	}
 
+	// 判断参数合法性
 	if len(params) < 3 {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "REQ insufficient number of params")
 	}
 
+	// 获取消息id和超时值
 	id, err := getMessageID(params[1])
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", err.Error())
@@ -772,7 +779,7 @@ func (p *protocolV2) REQ(client *clientV2, params [][]byte) ([]byte, error) {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID",
 			fmt.Sprintf("REQ timeout %d out of range 0-%d", timeoutDuration, p.ctx.nsqd.getOpts().MaxReqTimeout))
 	}
-
+	// 重新排序消息
 	err = client.Channel.RequeueMessage(client.ID, *id, timeoutDuration)
 	if err != nil {
 		return nil, protocol.NewClientErr(err, "E_REQ_FAILED",
@@ -784,38 +791,47 @@ func (p *protocolV2) REQ(client *clientV2, params [][]byte) ([]byte, error) {
 	return nil, nil
 }
 
+// Cleanly close your connection (no more messages are sent)
+// 关闭连接，没有消息会被发送
 func (p *protocolV2) CLS(client *clientV2, params [][]byte) ([]byte, error) {
 	if atomic.LoadInt32(&client.State) != stateSubscribed {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot CLS in current state")
 	}
 
+	// 关闭
 	client.StartClose()
 
 	return []byte("CLOSE_WAIT"), nil
 }
 
+// do nothing
 func (p *protocolV2) NOP(client *clientV2, params [][]byte) ([]byte, error) {
 	return nil, nil
 }
 
+// Publish a message to a topic
+// 发送消息给指定的TOPIC
 func (p *protocolV2) PUB(client *clientV2, params [][]byte) ([]byte, error) {
 	var err error
-
+	//  验证参数的正确性
 	if len(params) < 2 {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "PUB insufficient number of parameters")
 	}
 
+	// 获取TOPIC的名字
 	topicName := string(params[1])
 	if !protocol.IsValidTopicName(topicName) {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_TOPIC",
 			fmt.Sprintf("PUB topic name %q is not valid", topicName))
 	}
 
+	// 获取body的长度
 	bodyLen, err := readLen(client.Reader, client.lenSlice)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_MESSAGE", "PUB failed to read message body size")
 	}
 
+	// 验证长度的合法性
 	if bodyLen <= 0 {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_MESSAGE",
 			fmt.Sprintf("PUB invalid message body size %d", bodyLen))
@@ -825,7 +841,7 @@ func (p *protocolV2) PUB(client *clientV2, params [][]byte) ([]byte, error) {
 		return nil, protocol.NewFatalClientErr(nil, "E_BAD_MESSAGE",
 			fmt.Sprintf("PUB message too big %d > %d", bodyLen, p.ctx.nsqd.getOpts().MaxMsgSize))
 	}
-
+	// 获取body内容
 	messageBody := make([]byte, bodyLen)
 	_, err = io.ReadFull(client.Reader, messageBody)
 	if err != nil {
@@ -836,8 +852,11 @@ func (p *protocolV2) PUB(client *clientV2, params [][]byte) ([]byte, error) {
 		return nil, err
 	}
 
+	// 根据名字获取到topic实例
 	topic := p.ctx.nsqd.GetTopic(topicName)
+	// 将内容封装成Message对象
 	msg := NewMessage(<-p.ctx.nsqd.idChan, messageBody)
+	// 发送消息
 	err = topic.PutMessage(msg)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_PUB_FAILED", "PUB failed "+err.Error())
@@ -846,6 +865,7 @@ func (p *protocolV2) PUB(client *clientV2, params [][]byte) ([]byte, error) {
 	return okBytes, nil
 }
 
+// Publish multiple messages to a topic (atomically)
 func (p *protocolV2) MPUB(client *clientV2, params [][]byte) ([]byte, error) {
 	var err error
 
@@ -959,21 +979,25 @@ func (p *protocolV2) DPUB(client *clientV2, params [][]byte) ([]byte, error) {
 	return okBytes, nil
 }
 
+// Reset the timeout for an in-flight message
+// 重置待确认的消息的超时时间
 func (p *protocolV2) TOUCH(client *clientV2, params [][]byte) ([]byte, error) {
 	state := atomic.LoadInt32(&client.State)
+	// 验证状态
 	if state != stateSubscribed && state != stateClosing {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "cannot TOUCH in current state")
 	}
-
+	// 验证参数个数
 	if len(params) < 2 {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", "TOUCH insufficient number of params")
 	}
-
+	// 获取消息ID
 	id, err := getMessageID(params[1])
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(nil, "E_INVALID", err.Error())
 	}
 
+	// 设置超时时间
 	client.writeLock.RLock()
 	msgTimeout := client.MsgTimeout
 	client.writeLock.RUnlock()

@@ -3,6 +3,7 @@
 + [01 ： NSQ快速入门](https://github.com/feixiao/nsq-0.3.7/blob/master/docs/01_nsq_qk.md)
 + [02 ： NSQ指南](http://udn.yyuap.com/doc/wiki/project/nsq-guide/index.html)
 + [03 ： NSQLookupd介绍](https://github.com/feixiao/nsq-0.3.7/blob/master/docs/02_nsqlookupd.md)
++ [04 ： NSQD介绍](https://github.com/feixiao/nsq-0.3.7/blob/master/docs/03_nsqd.md)
 ### 项目信息
 <p align="center">
 <img align="left" width="175" src="http://nsq.io/static/img/nsq_blue.png">

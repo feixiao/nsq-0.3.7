@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mreiferson/go-snappystream"
 	"github.com/nsqio/nsq/internal/auth"
 )
 
@@ -55,47 +54,47 @@ type identifyEvent struct {
 
 type clientV2 struct {
 	// 64bit atomic vars need to be first for proper alignment on 32bit platforms
-	ReadyCount    int64			// 客户端反馈这次最多接收多少条消息
-	InFlightCount int64			// 发送但是没有获得确认的信息数量
-	MessageCount  uint64		// 发送的信息数量
-	FinishCount   uint64		// 发送但是获得确认的信息数量
-	RequeueCount  uint64		// 消息投递失败需要再次被投递的小心数量
+	ReadyCount    int64  // 客户端反馈这次最多接收多少条消息
+	InFlightCount int64  // 发送但是没有获得确认的信息数量
+	MessageCount  uint64 // 发送的信息数量
+	FinishCount   uint64 // 发送但是获得确认的信息数量
+	RequeueCount  uint64 // 消息投递失败需要再次被投递的小心数量
 
 	writeLock sync.RWMutex
 	metaLock  sync.RWMutex
 
-	ID        int64				// 客户端id
-	ctx       *context			// 上下文对象，这里指NSQD
+	ID        int64    // 客户端id
+	ctx       *context // 上下文对象，这里指NSQD
 	UserAgent string
 
 	// original connection
-	net.Conn					// 继承net.Conn
+	net.Conn // 继承net.Conn
 
 	// connections based on negotiated features
 	tlsConn     *tls.Conn
 	flateWriter *flate.Writer
 
 	// reading/writing interfaces
-	Reader *bufio.Reader		// 将net.Conn封装为Reader对象
-	Writer *bufio.Writer		// 将net.Conn封装为Writer对象
+	Reader *bufio.Reader // 将net.Conn封装为Reader对象
+	Writer *bufio.Writer // 将net.Conn封装为Writer对象
 
 	OutputBufferSize    int
 	OutputBufferTimeout time.Duration
 
 	HeartbeatInterval time.Duration
 
-	MsgTimeout time.Duration
+	MsgTimeout time.Duration // 消息的超时
 
 	State          int32
 	ConnectTime    time.Time
-	Channel        *Channel			// 自己所订阅的Channel
-	ReadyStateChan chan int			// protocolV2的messagePump处理
-	ExitChan       chan int			// protocolV2的messagePump处理
+	Channel        *Channel // 自己所订阅的Channel
+	ReadyStateChan chan int // protocolV2的messagePump处理
+	ExitChan       chan int // protocolV2的messagePump处理
 
-	ClientID string					// 客户端ID,由外部分配
-	Hostname string					// 对端host
+	ClientID string // 客户端ID,由外部分配
+	Hostname string // 对端host
 
-	SampleRate int32				// for what ？？
+	SampleRate int32 // for what ？？
 
 	IdentifyEventChan chan identifyEvent
 	SubEventChan      chan *Channel
@@ -105,10 +104,10 @@ type clientV2 struct {
 	Deflate int32
 
 	// re-usable buffer for reading the 4-byte lengths off the wire
-	lenBuf   [4]byte	// [ 4-byte size in bytes ] 即消息体中前面四个字节表示消息长度（不包括这四个字节的长度）
-	lenSlice []byte		// 将上面lenBuf数组以切片的形式操作
+	lenBuf   [4]byte // [ 4-byte size in bytes ] 即消息体中前面四个字节表示消息长度（不包括这四个字节的长度）
+	lenSlice []byte  // 将上面lenBuf数组以切片的形式操作
 
-	AuthSecret string		
+	AuthSecret string
 	AuthState  *auth.State
 }
 
@@ -174,10 +173,9 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 		clientID = data.ShortID
 	}
 
-
 	c.metaLock.Lock()
-	c.ClientID = clientID  			// data.ClientID
-	c.Hostname = hostname  			// data.Hostname
+	c.ClientID = clientID // data.ClientID
+	c.Hostname = hostname // data.Hostname
 	c.UserAgent = data.UserAgent
 	c.metaLock.Unlock()
 
@@ -220,7 +218,7 @@ func (c *clientV2) Identify(data identifyDataV2) error {
 
 	// update the client's message pump
 	select {
-	case c.IdentifyEventChan <- ie:    // protocolV2的messagePump处理
+	case c.IdentifyEventChan <- ie: // protocolV2的messagePump处理
 	default:
 	}
 
@@ -349,6 +347,7 @@ func (c *clientV2) IsReadyForMessages() bool {
 			c, readyCount, inFlightCount)
 	}
 
+	// 没有确认的消息大于消费者最大的接收数据
 	if inFlightCount >= readyCount || readyCount <= 0 {
 		return false
 	}
@@ -367,7 +366,7 @@ func (c *clientV2) tryUpdateReadyState() {
 	// where you cannot the message pump loop would have iterated anyway.
 	// the atomic integer operations guarantee correctness of the value.
 	select {
-	case c.ReadyStateChan <- 1:	// ??
+	case c.ReadyStateChan <- 1: // ??
 	default:
 	}
 }
@@ -378,22 +377,26 @@ func (c *clientV2) FinishedMessage() {
 	atomic.AddInt64(&c.InFlightCount, -1)
 	c.tryUpdateReadyState()
 }
+
 //
 func (c *clientV2) Empty() {
 	atomic.StoreInt64(&c.InFlightCount, 0)
 	c.tryUpdateReadyState()
 }
+
 // 统计发送的数据
 func (c *clientV2) SendingMessage() {
 	atomic.AddInt64(&c.InFlightCount, 1)
 	atomic.AddUint64(&c.MessageCount, 1)
 }
+
 // 消息超时，那么需要等待的信息减１
 func (c *clientV2) TimedOutMessage() {
 	atomic.AddInt64(&c.InFlightCount, -1)
 	c.tryUpdateReadyState()
 }
 
+// 消息重新投递，更新相应的数值
 func (c *clientV2) RequeuedMessage() {
 	atomic.AddUint64(&c.RequeueCount, 1)
 	atomic.AddInt64(&c.InFlightCount, -1)
@@ -433,6 +436,7 @@ func (c *clientV2) SetHeartbeatInterval(desiredInterval int) error {
 
 	return nil
 }
+
 // 设置writer的buffer大小
 func (c *clientV2) SetOutputBufferSize(desiredSize int) error {
 	var size int

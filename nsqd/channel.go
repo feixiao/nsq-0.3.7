@@ -40,11 +40,11 @@ type Channel struct {
 
 	sync.RWMutex
 
-	topicName string				// 所属topic的名字
-	name      string				// channel的名字
-	ctx       *context				// 上下文对象（NSQD）
+	topicName string   // 所属topic的名字
+	name      string   // channel的名字
+	ctx       *context // 上下文对象（NSQD）
 	// 数据持久化
-	backend BackendQueue			// channel自己的数据队列
+	backend BackendQueue // channel自己的数据队列
 	// memoryMsgChan负责接收写到该Channel的所有消息
 	// 创建创建Channel时会开启一个新的goroutine(messagePump)负责监听memoryMsgChan，当有消息时会将该消息写到clientMsgChan中，
 	// 订阅该channel的consumer都会试图从clientMsgChan中取消息，一条消息只能被一个consumer抢到  ???
@@ -52,31 +52,31 @@ type Channel struct {
 	// 对外暴露，获取数据（protocol_v2.go中的PumpMessage）
 	clientMsgChan chan *Message
 
-	exitChan      chan int			// 通知goroutine退出
-	exitFlag      int32				// 标记是否正在退出
-	exitMutex     sync.RWMutex
+	exitChan  chan int // 通知goroutine退出
+	exitFlag  int32    // 标记是否正在退出
+	exitMutex sync.RWMutex
 
 	// state tracking
-	clients        map[int64]Consumer	// 维护该channel下面的Consumer
-	paused         int32
-	ephemeral      bool					// 暂时的，设置为true的时候当memoryMsgChan写满的时候我们直接丢弃数据
+	clients   map[int64]Consumer // 维护该channel下面的Consumer
+	paused    int32
+	ephemeral bool // 暂时的，设置为true的时候当memoryMsgChan写满的时候我们直接丢弃数据
 
-	deleteCallback func(*Channel)		// 删除Channel的回调函数
+	deleteCallback func(*Channel) // 删除Channel的回调函数
 	deleter        sync.Once
 
 	// Stats tracking
-	e2eProcessingLatencyStream *quantile.Quantile	// 主要用于统计消息投递的延迟等
+	e2eProcessingLatencyStream *quantile.Quantile // 主要用于统计消息投递的延迟等
 
 	// TODO: these can be DRYd up
-	deferredMessages map[MessageID]*pqueue.Item		
-	deferredPQ       pqueue.PriorityQueue			// 投递失败，等待重新投递的消息
+	deferredMessages map[MessageID]*pqueue.Item
+	deferredPQ       pqueue.PriorityQueue // 投递失败，等待重新投递的消息
 	deferredMutex    sync.Mutex
-	inFlightMessages map[MessageID]*Message			// 管理发送出去但是对端没有确认收到的消息
-	inFlightPQ       inFlightPqueue					// 正在投递但还没确认投递成功的消息 type inFlightPqueue []*Message
+	inFlightMessages map[MessageID]*Message // 管理发送出去但是对端没有确认收到的消息
+	inFlightPQ       inFlightPqueue         // 正在投递但还没确认投递成功的消息 type inFlightPqueue []*Message
 	inFlightMutex    sync.Mutex
 
 	// stat counters
-	bufferedCount int32			// ???
+	bufferedCount int32 // ???
 }
 
 // NewChannel creates a new instance of the Channel type and returns a pointer
@@ -115,15 +115,15 @@ func NewChannel(topicName string, channelName string, ctx *context,
 			ctx.nsqd.getOpts().DataPath,
 			ctx.nsqd.getOpts().MaxBytesPerFile,
 			int32(minValidMsgLength),
-			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength,	//  minValidMsgLength为消息头大小
+			int32(ctx.nsqd.getOpts().MaxMsgSize)+minValidMsgLength, //  minValidMsgLength为消息头大小
 			ctx.nsqd.getOpts().SyncEvery,
 			ctx.nsqd.getOpts().SyncTimeout,
 			ctx.nsqd.getOpts().Logger)
 	}
 
-	go c.messagePump()		// Channel的主业务处理函数
+	go c.messagePump() // Channel的主业务处理函数
 
-	c.ctx.nsqd.Notify(c)	// 并没有持久化自己啊？？
+	c.ctx.nsqd.Notify(c) // 并没有持久化自己啊？？
 
 	return c
 }
@@ -136,11 +136,11 @@ func (c *Channel) initPQ() {
 	c.deferredMessages = make(map[MessageID]*pqueue.Item)
 
 	c.inFlightMutex.Lock()
-	c.inFlightPQ = newInFlightPqueue(pqSize)	// nsq/nsqd/in_flight_pqueue.go是nsq实现的一个优先级队列，提供了常用的队列操作
+	c.inFlightPQ = newInFlightPqueue(pqSize) // nsq/nsqd/in_flight_pqueue.go是nsq实现的一个优先级队列，提供了常用的队列操作
 	c.inFlightMutex.Unlock()
 
 	c.deferredMutex.Lock()
-	c.deferredPQ = pqueue.New(pqSize)			// nsq/internal/pqueue/pqueue.go 也是一个优先队列，稍后比较差异
+	c.deferredPQ = pqueue.New(pqSize) // nsq/internal/pqueue/pqueue.go 也是一个优先队列，稍后比较差异
 	c.deferredMutex.Unlock()
 }
 
@@ -226,9 +226,9 @@ func (c *Channel) Empty() error {
 				// so just remove it from the select so we can make progress
 				clientMsgChan = nil // 清理完之后设置为nil，这样就不能写入了
 			}
-		case <-c.memoryMsgChan:		// 清理完memoryMsgChan中的数据
+		case <-c.memoryMsgChan: // 清理完memoryMsgChan中的数据
 		default:
-			goto finish  			// 上面两个通道全部被清理完之后就退出
+			goto finish // 上面两个通道全部被清理完之后就退出
 		}
 	}
 
@@ -374,6 +374,7 @@ func (c *Channel) TouchMessage(clientID int64, id MessageID, clientMsgTimeout ti
 	}
 	c.removeFromInFlightPQ(msg)
 
+	// 计算下一次超时的时间
 	newTimeout := time.Now().Add(clientMsgTimeout)
 	if newTimeout.Sub(msg.deliveryTS) >=
 		c.ctx.nsqd.getOpts().MaxMsgTimeout {
@@ -424,13 +425,13 @@ func (c *Channel) RequeueMessage(clientID int64, id MessageID, timeout time.Dura
 
 	if timeout == 0 {
 		c.exitMutex.RLock()
-		err := c.doRequeue(msg)
+		err := c.doRequeue(msg) // 立即投递
 		c.exitMutex.RUnlock()
 		return err
 	}
 
 	// deferred requeue
-	return c.StartDeferredTimeout(msg, timeout)
+	return c.StartDeferredTimeout(msg, timeout) // 延迟一段时间投递
 }
 
 // AddClient adds a client to the Channel's client list
