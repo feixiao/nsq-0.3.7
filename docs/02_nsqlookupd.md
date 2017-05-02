@@ -18,7 +18,7 @@
 
   ![./img/002.png](./img/002.png)
 
-  在nsqlookupd/http.go中实现上面的业务功能，https://github.com/feixiao/nsq-0.3.7/blob/master/nsqlookupd/http.go中有详细的说明。 
+  在nsqlookupd/http.go中实现上面的业务功能，https://github.com/feixiao/nsq-0.3.7/blob/master/nsqlookupd/http.go 中有详细的说明。 
 
   + GET /ping	监控端点，必须返回 OK
   + GET /debug   返回全部producer的信息
@@ -31,6 +31,8 @@
   + POST /channel/create  根据传入的名字创建channel
   + POST /channel/delete  根据传入的名字删除channel
   + POST /topic/tombstone 让指定topic下面的一个生产者失效
+
++ [详细的http协议介绍](http://nsq.io/components/nsqlookupd.html)
 
 ### 参考资料
 

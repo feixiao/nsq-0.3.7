@@ -1010,41 +1010,45 @@ func (p *protocolV2) TOUCH(client *clientV2, params [][]byte) ([]byte, error) {
 	return nil, nil
 }
 
+// 解析多条消息
 func readMPUB(r io.Reader, tmp []byte, idChan chan MessageID, maxMessageSize int64) ([]*Message, error) {
+	// 读取前面的四个字节，表示消息的个数
 	numMessages, err := readLen(r, tmp)
 	if err != nil {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY", "MPUB failed to read message count")
 	}
 
+	// 检验消息个数的正确性
 	if numMessages <= 0 {
 		return nil, protocol.NewFatalClientErr(err, "E_BAD_BODY",
 			fmt.Sprintf("MPUB invalid message count %d", numMessages))
 	}
-
+	// 创建数组
 	messages := make([]*Message, 0, numMessages)
 	for i := int32(0); i < numMessages; i++ {
+		// 获取前面的四个字节，表示该条消息的长度
 		messageSize, err := readLen(r, tmp)
 		if err != nil {
 			return nil, protocol.NewFatalClientErr(err, "E_BAD_MESSAGE",
 				fmt.Sprintf("MPUB failed to read message(%d) body size", i))
 		}
-
+		// 验证消息的长度的合法性
 		if messageSize <= 0 {
 			return nil, protocol.NewFatalClientErr(nil, "E_BAD_MESSAGE",
 				fmt.Sprintf("MPUB invalid message(%d) body size %d", i, messageSize))
 		}
-
 		if int64(messageSize) > maxMessageSize {
 			return nil, protocol.NewFatalClientErr(nil, "E_BAD_MESSAGE",
 				fmt.Sprintf("MPUB message too big %d > %d", messageSize, maxMessageSize))
 		}
 
+		// 获取该条消息的内容
 		msgBody := make([]byte, messageSize)
 		_, err = io.ReadFull(r, msgBody)
 		if err != nil {
 			return nil, protocol.NewFatalClientErr(err, "E_BAD_MESSAGE", "MPUB failed to read message body")
 		}
-
+		// 创建消息结构，并添加到数组
 		messages = append(messages, NewMessage(<-idChan, msgBody))
 	}
 

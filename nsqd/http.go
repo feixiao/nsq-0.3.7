@@ -46,6 +46,13 @@ func newHTTPServer(ctx *context, tlsEnabled bool, tlsRequired bool) *httpServer 
 		router:      router,
 	}
 
+	// 函数的处理过程：
+	// 	http_api.PlainText
+	//			--> log
+	//				--> s.pingHandler
+	//              <--
+	//			<--
+	// 	<--
 	router.Handle("GET", "/ping", http_api.Decorate(s.pingHandler, log, http_api.PlainText))
 
 	// v1 negotiate
@@ -176,6 +183,7 @@ func (s *httpServer) getExistingTopicFromQuery(req *http.Request) (*http_api.Req
 	return reqParams, topic, channelName, err
 }
 
+// 从Http请求参数中获取请求参数和topic实例
 func (s *httpServer) getTopicFromQuery(req *http.Request) (url.Values, *Topic, error) {
 	reqParams, err := url.ParseQuery(req.URL.RawQuery)
 	if err != nil {
@@ -183,6 +191,7 @@ func (s *httpServer) getTopicFromQuery(req *http.Request) (url.Values, *Topic, e
 		return nil, nil, http_api.Err{400, "INVALID_REQUEST"}
 	}
 
+	// 获取topic名字
 	topicNames, ok := reqParams["topic"]
 	if !ok {
 		return nil, nil, http_api.Err{400, "MISSING_ARG_TOPIC"}
@@ -193,36 +202,45 @@ func (s *httpServer) getTopicFromQuery(req *http.Request) (url.Values, *Topic, e
 		return nil, nil, http_api.Err{400, "INVALID_TOPIC"}
 	}
 
+	// 返回请求参数和topic实例
 	return reqParams, s.ctx.nsqd.GetTopic(topicName), nil
 }
 
+// publish a message to a topic
+// 向topic推送消息
 func (s *httpServer) doPUB(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
 	// TODO: one day I'd really like to just error on chunked requests
 	// to be able to fail "too big" requests before we even read
-
+	// 判断消息长度是否合法
 	if req.ContentLength > s.ctx.nsqd.getOpts().MaxMsgSize {
 		return nil, http_api.Err{413, "MSG_TOO_BIG"}
 	}
 
 	// add 1 so that it's greater than our max when we test for it
 	// (LimitReader returns a "fake" EOF)
+	// 读取数据，故意长度加1，这样好判断消息的实际长度是否超过最大的限制
 	readMax := s.ctx.nsqd.getOpts().MaxMsgSize + 1
+	// 读取全部的数据，最大的长度为readMax
 	body, err := ioutil.ReadAll(io.LimitReader(req.Body, readMax))
 	if err != nil {
 		return nil, http_api.Err{500, "INTERNAL_ERROR"}
 	}
+	// 说明实际长度大于设定值
 	if int64(len(body)) == readMax {
 		return nil, http_api.Err{413, "MSG_TOO_BIG"}
 	}
+	// 空消息
 	if len(body) == 0 {
 		return nil, http_api.Err{400, "MSG_EMPTY"}
 	}
 
+	// 从http请求参数中获取参数
 	reqParams, topic, err := s.getTopicFromQuery(req)
 	if err != nil {
 		return nil, err
 	}
 
+	// 判断是否是立即推送的消息(如果不是，需要解析延迟时间)
 	var deferred time.Duration
 	if ds, ok := reqParams["defer"]; ok {
 		var di int64
@@ -236,6 +254,7 @@ func (s *httpServer) doPUB(w http.ResponseWriter, req *http.Request, ps httprout
 		}
 	}
 
+	// 构建消息结构，推送给topic
 	msg := NewMessage(<-s.ctx.nsqd.idChan, body)
 	msg.deferred = deferred
 	err = topic.PutMessage(msg)
@@ -246,22 +265,25 @@ func (s *httpServer) doPUB(w http.ResponseWriter, req *http.Request, ps httprout
 	return "OK", nil
 }
 
+// publish multiple messages to a topic
+// 推送多个消息给指定的topic
 func (s *httpServer) doMPUB(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
 	var msgs []*Message
 	var exit bool
 
 	// TODO: one day I'd really like to just error on chunked requests
 	// to be able to fail "too big" requests before we even read
-
+	// 判断消息长度是否合法
 	if req.ContentLength > s.ctx.nsqd.getOpts().MaxBodySize {
 		return nil, http_api.Err{413, "BODY_TOO_BIG"}
 	}
-
+	// 从http请求参数中获取参数和topic实例
 	reqParams, topic, err := s.getTopicFromQuery(req)
 	if err != nil {
 		return nil, err
 	}
 
+	// 消息格式分为两种：二进制（四个字节长度+消息内容的形式）和非二进制（消息以'\n'分隔）
 	_, ok := reqParams["binary"]
 	if ok {
 		tmp := make([]byte, 4)
@@ -274,22 +296,26 @@ func (s *httpServer) doMPUB(w http.ResponseWriter, req *http.Request, ps httprou
 		// add 1 so that it's greater than our max when we test for it
 		// (LimitReader returns a "fake" EOF)
 		readMax := s.ctx.nsqd.getOpts().MaxBodySize + 1
+
+		// 创建Reader对象，最多保存readMax字节数据
 		rdr := bufio.NewReader(io.LimitReader(req.Body, readMax))
 		total := 0
 		for !exit {
 			var block []byte
 			block, err = rdr.ReadBytes('\n')
 			if err != nil {
+				// 如果读取完或者出错就退出
 				if err != io.EOF {
 					return nil, http_api.Err{500, "INTERNAL_ERROR"}
 				}
 				exit = true
 			}
-			total += len(block)
+			total += len(block) // 记录已经读取的数据
 			if int64(total) == readMax {
 				return nil, http_api.Err{413, "BODY_TOO_BIG"}
 			}
 
+			// 已经读取一个完整的消息，那么我们去除消息分隔符'\n'
 			if len(block) > 0 && block[len(block)-1] == '\n' {
 				block = block[:len(block)-1]
 			}
@@ -300,15 +326,18 @@ func (s *httpServer) doMPUB(w http.ResponseWriter, req *http.Request, ps httprou
 				continue
 			}
 
+			// 消息长度大于设置值
 			if int64(len(block)) > s.ctx.nsqd.getOpts().MaxMsgSize {
 				return nil, http_api.Err{413, "MSG_TOO_BIG"}
 			}
 
+			// 创建消息结构，并添加到消息数组（这边全是立即推送的消息）
 			msg := NewMessage(<-s.ctx.nsqd.idChan, block)
 			msgs = append(msgs, msg)
 		}
 	}
 
+	// 推送全部的消息内容
 	err = topic.PutMessages(msgs)
 	if err != nil {
 		return nil, http_api.Err{503, "EXITING"}
@@ -317,11 +346,16 @@ func (s *httpServer) doMPUB(w http.ResponseWriter, req *http.Request, ps httprou
 	return "OK", nil
 }
 
+// create a new topic
+// 创建topic
 func (s *httpServer) doCreateTopic(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
+	// 获取指定的topic的实例，如果不存在就创建一个
 	_, _, err := s.getTopicFromQuery(req)
 	return nil, err
 }
 
+// empty a topic
+// 清空一个topic
 func (s *httpServer) doEmptyTopic(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
 	reqParams, err := http_api.NewReqParams(req)
 	if err != nil {
@@ -338,11 +372,13 @@ func (s *httpServer) doEmptyTopic(w http.ResponseWriter, req *http.Request, ps h
 		return nil, http_api.Err{400, "INVALID_TOPIC"}
 	}
 
+	// 获取topic实例
 	topic, err := s.ctx.nsqd.GetExistingTopic(topicName)
 	if err != nil {
 		return nil, http_api.Err{404, "TOPIC_NOT_FOUND"}
 	}
 
+	// 清理topic
 	err = topic.Empty()
 	if err != nil {
 		return nil, http_api.Err{500, "INTERNAL_ERROR"}
@@ -351,18 +387,21 @@ func (s *httpServer) doEmptyTopic(w http.ResponseWriter, req *http.Request, ps h
 	return nil, nil
 }
 
+// delete a topic
+// 删除指定的topic
 func (s *httpServer) doDeleteTopic(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
+	// 解析http请求参数
 	reqParams, err := http_api.NewReqParams(req)
 	if err != nil {
 		s.ctx.nsqd.logf("ERROR: failed to parse request params - %s", err)
 		return nil, http_api.Err{400, "INVALID_REQUEST"}
 	}
-
+	// 获取topic名字
 	topicName, err := reqParams.Get("topic")
 	if err != nil {
 		return nil, http_api.Err{400, "MISSING_ARG_TOPIC"}
 	}
-
+	// 删除存在的topic
 	err = s.ctx.nsqd.DeleteExistingTopic(topicName)
 	if err != nil {
 		return nil, http_api.Err{404, "TOPIC_NOT_FOUND"}
@@ -371,6 +410,8 @@ func (s *httpServer) doDeleteTopic(w http.ResponseWriter, req *http.Request, ps 
 	return nil, nil
 }
 
+// pause message flow for a topic
+// 暂停一个topic的消息流
 func (s *httpServer) doPauseTopic(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
 	reqParams, err := http_api.NewReqParams(req)
 	if err != nil {
@@ -388,6 +429,7 @@ func (s *httpServer) doPauseTopic(w http.ResponseWriter, req *http.Request, ps h
 		return nil, http_api.Err{404, "TOPIC_NOT_FOUND"}
 	}
 
+	// 根据url判断是暂停还是启动(通过设在channel为nil的方式控制)
 	if strings.Contains(req.URL.Path, "unpause") {
 		err = topic.UnPause()
 	} else {
@@ -400,21 +442,26 @@ func (s *httpServer) doPauseTopic(w http.ResponseWriter, req *http.Request, ps h
 
 	// pro-actively persist metadata so in case of process failure
 	// nsqd won't suddenly (un)pause a topic
+	// 保存元数据
 	s.ctx.nsqd.Lock()
 	s.ctx.nsqd.PersistMetadata()
 	s.ctx.nsqd.Unlock()
 	return nil, nil
 }
 
+// 创建一个channel
 func (s *httpServer) doCreateChannel(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
+	// 获取topic实例和channel的名字
 	_, topic, channelName, err := s.getExistingTopicFromQuery(req)
 	if err != nil {
 		return nil, err
 	}
+	// 根据channel的名字创建channel
 	topic.GetChannel(channelName)
 	return nil, nil
 }
 
+// 情况channel
 func (s *httpServer) doEmptyChannel(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
 	_, topic, channelName, err := s.getExistingTopicFromQuery(req)
 	if err != nil {
@@ -426,6 +473,7 @@ func (s *httpServer) doEmptyChannel(w http.ResponseWriter, req *http.Request, ps
 		return nil, http_api.Err{404, "CHANNEL_NOT_FOUND"}
 	}
 
+	// 清理消息
 	err = channel.Empty()
 	if err != nil {
 		return nil, http_api.Err{500, "INTERNAL_ERROR"}
@@ -434,12 +482,15 @@ func (s *httpServer) doEmptyChannel(w http.ResponseWriter, req *http.Request, ps
 	return nil, nil
 }
 
+// 删除指定的channel
 func (s *httpServer) doDeleteChannel(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
+	// 获取topic实例和channel的名字
 	_, topic, channelName, err := s.getExistingTopicFromQuery(req)
 	if err != nil {
 		return nil, err
 	}
 
+	// 删除指定的channel
 	err = topic.DeleteExistingChannel(channelName)
 	if err != nil {
 		return nil, http_api.Err{404, "CHANNEL_NOT_FOUND"}
@@ -448,17 +499,19 @@ func (s *httpServer) doDeleteChannel(w http.ResponseWriter, req *http.Request, p
 	return nil, nil
 }
 
+// 暂停channel的数据流
 func (s *httpServer) doPauseChannel(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
+	// 获取topic实例和channel的名字
 	_, topic, channelName, err := s.getExistingTopicFromQuery(req)
 	if err != nil {
 		return nil, err
 	}
-
+	// 获取channle的实例
 	channel, err := topic.GetExistingChannel(channelName)
 	if err != nil {
 		return nil, http_api.Err{404, "CHANNEL_NOT_FOUND"}
 	}
-
+	// 根据url判断暂停还是启动操作
 	if strings.Contains(req.URL.Path, "unpause") {
 		err = channel.UnPause()
 	} else {
@@ -471,23 +524,30 @@ func (s *httpServer) doPauseChannel(w http.ResponseWriter, req *http.Request, ps
 
 	// pro-actively persist metadata so in case of process failure
 	// nsqd won't suddenly (un)pause a channel
+
+	// 保存元数据
 	s.ctx.nsqd.Lock()
 	s.ctx.nsqd.PersistMetadata()
 	s.ctx.nsqd.Unlock()
 	return nil, nil
 }
 
+// comprehensive runtime telemetry
+// 获取指定channel全面的运行时数据
 func (s *httpServer) doStats(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
+	// 获取http请求参数
 	reqParams, err := http_api.NewReqParams(req)
 	if err != nil {
 		s.ctx.nsqd.logf("ERROR: failed to parse request params - %s", err)
 		return nil, http_api.Err{400, "INVALID_REQUEST"}
 	}
+
 	formatString, _ := reqParams.Get("format")
 	topicName, _ := reqParams.Get("topic")
 	channelName, _ := reqParams.Get("channel")
 	jsonFormat := formatString == "json"
 
+	// 获取运行数据
 	stats := s.ctx.nsqd.GetStats()
 	health := s.ctx.nsqd.GetHealth()
 	startTime := s.ctx.nsqd.GetStartTime()
@@ -498,11 +558,13 @@ func (s *httpServer) doStats(w http.ResponseWriter, req *http.Request, ps httpro
 		// Find the desired-topic-index:
 		for _, topicStats := range stats {
 			if topicStats.TopicName == topicName {
+				// 遍历到指定的topic
 				// If we WERE given a channel-name, remove stats for all the other channels:
 				if len(channelName) > 0 {
 					// Find the desired-channel:
 					for _, channelStats := range topicStats.Channels {
 						if channelStats.ChannelName == channelName {
+							// 遍历到指定的channel
 							topicStats.Channels = []ChannelStats{channelStats}
 							// We've got the channel we were looking for:
 							break

@@ -134,3 +134,27 @@
         AUTH\n
         [ 4-byte size in bytes ][ N-byte Auth Secret ]
         ```
+
++ HTTP接口提供的服务如下：
+
+  ![./img/004.png](./img/004.png)
+
+  在nsqd/http.go中实现上面的业务功能，[https://github.com/feixiao/nsq-0.3.7/blob/master/nsqd/http.go ](https://github.com/feixiao/nsq-0.3.7/blob/master/nsqd/http.go) 中有详细的说明。
+
+  + GET /ping 		返回服务器的健康（内部出错就返回500）
+  + POST /pub             推送一个消息给某个指定的topic（消息分为立即推送和延迟推送两种）
+  + POST /mpub          推送多个消息给某个指定的topic（消息只有立即推送一种，但是有两种数据组织的形似，一个是以'\n'分隔、一个是4个字节长度加消息内容的方式，通过binary参数说明）
+  + GET /stats              获取全面的运行时数据
+  + POST /topic/create     创建topic（名字带有#ephemeral结尾，在删除完channel的时候需要删除topic）
+  + POST /topic/delete     删除topic
+  + POST /topic/empty     情况topic中的数据（未发送的数据）
+  + POST /topic/pause      暂停一个topic
+  + POST /topic/pause      启动一个topic
+  + POST /channel/create 创建channel
+  + POST /channel/delete 删除channel（topic是否为ephemeral觉得在没有channel的时候是否需要删除topic）
+  + POST /channel/empty 清空channel
+  + POST /channel/pause 暂停channel的数据流
+  + POST /channel/unpause 重启channel的数据流
+
++ [详细的http协议](http://nsq.io/components/nsqd.html)
+

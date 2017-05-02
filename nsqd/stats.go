@@ -116,6 +116,7 @@ type ChannelsByName struct {
 
 func (c ChannelsByName) Less(i, j int) bool { return c.Channels[i].name < c.Channels[j].name }
 
+// 返回全部的topic当前的信息
 func (n *NSQD) GetStats() []TopicStats {
 	n.RLock()
 	realTopics := make([]*Topic, 0, len(n.topicMap))

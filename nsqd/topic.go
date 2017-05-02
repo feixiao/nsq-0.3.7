@@ -415,6 +415,7 @@ func (t *Topic) exit(deleted bool) error {
 	return t.backend.Close()
 }
 
+// 清理内存和磁盘中的数据
 func (t *Topic) Empty() error {
 	for {
 		select {
