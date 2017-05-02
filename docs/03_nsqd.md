@@ -8,7 +8,7 @@
 
 + TCP接口说明：
 
-  + 处理消费者/生产者连接，协议部分在protocol_v2.go中实现，[详细代码](https://github.com/feixiao/nsq-0.3.7/blob/master/nsqd/protocol_v2.go)。支持的操作如下，详细请参考[TCP协议详细说明](http://nsq.io/clients/tcp_protocol_spec.html)
+  + 处理消费者连接，协议部分在protocol_v2.go中实现，[详细代码](https://github.com/feixiao/nsq-0.3.7/blob/master/nsqd/protocol_v2.go)。支持的操作如下，详细请参考[TCP协议详细说明](http://nsq.io/clients/tcp_protocol_spec.html)
 
     ![./img/003.png](./img/003.png)
 
