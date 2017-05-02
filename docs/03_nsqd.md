@@ -86,56 +86,51 @@
             ... (repeated <num_messages> times)
       ```
 
-  +  DPUB命令(新版本已经废弃这个命令)
-
-  + NOP命令(没有时间意义的命令，为什么存在？)
-
+  + DPUB命令(新版本已经废弃这个命令)
+  + NOP命令(没有实际意义的命令，为什么存在？)
   + TOUCH命令
 
       + 作用
 
         重置待确认的消息的超时时间
 
-
       + 消息格式
 
         ```
         TOUCH <message_id>\n
         ```
-
   + SUB命令
 
-    + 作用
+      + 作用
 
-      订阅某个topic下面的某个channel
+        订阅某个topic下面的某个channel
 
-    + 消息格式
+      + 消息格式
 
-      ```
-      SUB <topic_name> <channel_name>\n
-      ```
+        ```
+        SUB <topic_name> <channel_name>\n
+        ```
+    + CLS命令
 
-  + CLS命令
+      + 作用
 
-    + 作用
+        关闭连接，没有消息会被发送
 
-      关闭连接，没有消息会被发送
+      + 消息格式
 
-    + 消息格式
+        ```
+        CLS\n
+        ```
 
-      ```
-      CLS\n
-      ```
+    + AUTH命令
 
-  + AUTH命令
+      + 作用
 
-    + 作用
+        认证(IDENTIFY)阶段如果auth_required=true，那么客户端必须在其他明确之前先进行认证
 
-      认证(IDENTIFY)阶段如果auth_required=true，那么客户端必须在其他明确之前先进行认证
+      + 消息格式
 
-    + 消息格式
-
-      ```
-      AUTH\n
-      [ 4-byte size in bytes ][ N-byte Auth Secret ]
-      ```
+        ```
+        AUTH\n
+        [ 4-byte size in bytes ][ N-byte Auth Secret ]
+        ```
