@@ -26,9 +26,9 @@
   + GET  /topics  获取全部的的topic信息
   + GET /channels  获取指定topic下面的channel信息
   + GET /nodes  获取生产者节点信息
-  + POST /topic/create  根据传入的名字创建topic
-  + POST /topic/delete  根据传入的名字删除topic
-  + POST /channel/create  根据传入的名字创建channel
+  + POST /topic/create  根据传入的名字创建topic (key为{"topic", topicName, ""})，这时producer为空结构
+  + POST /topic/delete  根据传入的名字删除topic (先删除channel再删除topic)
+  + POST /channel/create  根据传入的名字创建channel（key 为{"channel", topicName, channelName}）
   + POST /channel/delete  根据传入的名字删除channel
   + POST /topic/tombstone 让指定topic下面的一个生产者失效
 

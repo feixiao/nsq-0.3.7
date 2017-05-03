@@ -245,7 +245,7 @@ func (s *httpServer) doTombstoneTopicProducer(w http.ResponseWriter, req *http.R
 	return nil, nil
 }
 
-// 删除channel
+// 创建channel
 func (s *httpServer) doCreateChannel(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
 	reqParams, err := http_api.NewReqParams(req)
 	if err != nil {
@@ -351,6 +351,7 @@ func (s *httpServer) doNodes(w http.ResponseWriter, req *http.Request, ps httpro
 	}, nil
 }
 
+// 返回全部的producers信息
 func (s *httpServer) doDebug(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {
 	s.ctx.nsqlookupd.DB.RLock()
 	defer s.ctx.nsqlookupd.DB.RUnlock()
