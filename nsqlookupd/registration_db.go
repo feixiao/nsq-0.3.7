@@ -23,7 +23,7 @@ type Registrations []Registration
 
 // 端点信息存储
 type PeerInfo struct {
-	lastUpdate       int64					// 最近一次更新
+	lastUpdate       int64 // 最近一次更新
 	id               string
 	RemoteAddress    string `json:"remote_address"`
 	Hostname         string `json:"hostname"`
@@ -36,8 +36,8 @@ type PeerInfo struct {
 // 生产者定义
 type Producer struct {
 	peerInfo     *PeerInfo
-	tombstoned   bool		// 是否要被移除
-	tombstonedAt time.Time		// 移除时间
+	tombstoned   bool      // 是否要被移除
+	tombstonedAt time.Time // 移除时间
 }
 
 type Producers []*Producer
@@ -46,6 +46,7 @@ type Producers []*Producer
 func (p *Producer) String() string {
 	return fmt.Sprintf("%s [%d, %d]", p.peerInfo.BroadcastAddress, p.peerInfo.TCPPort, p.peerInfo.HTTPPort)
 }
+
 // 将Producer标记为墓碑状态（需要被删除）
 func (p *Producer) Tombstone() {
 	p.tombstoned = true
@@ -56,7 +57,6 @@ func (p *Producer) Tombstone() {
 func (p *Producer) IsTombstoned(lifetime time.Duration) bool {
 	return p.tombstoned && time.Now().Sub(p.tombstonedAt) < lifetime
 }
-
 
 /*********************************************NewRegistrationDB************************************************************/
 
@@ -145,9 +145,9 @@ func (r *RegistrationDB) FindRegistrations(category string, key string, subkey s
 		// 如果key和subkey都不是“*”,那么严格匹配
 		k := Registration{category, key, subkey}
 		if _, ok := r.registrationMap[k]; ok {
-			return Registrations{k}  // 找到就返回
+			return Registrations{k} // 找到就返回
 		}
-		return Registrations{}		// 没有找到就返回空
+		return Registrations{} // 没有找到就返回空
 	}
 
 	// 如果key或者subkey存在“*”,那么模糊匹配
@@ -213,7 +213,6 @@ func (r *RegistrationDB) LookupRegistrations(id string) Registrations {
 	return results
 }
 
-
 /*********************************************Registration************************************************************/
 
 // 是否符合模糊匹配的规则
@@ -251,6 +250,7 @@ func (rr Registrations) Keys() []string {
 	}
 	return keys
 }
+
 // 获取MAP中所有Registration的subkey
 func (rr Registrations) SubKeys() []string {
 	subkeys := make([]string, len(rr))
@@ -259,7 +259,6 @@ func (rr Registrations) SubKeys() []string {
 	}
 	return subkeys
 }
-
 
 /*********************************************Producers************************************************************/
 

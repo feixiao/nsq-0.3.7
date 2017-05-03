@@ -40,6 +40,8 @@ type guidFactory struct {
 
 func (f *guidFactory) NewGUID(workerID int64) (guid, error) {
 	// divide by 1048576, giving pseudo-milliseconds
+	// ts 是 nano » 20, 也就是 1 ts = 1048576 nano, 而 1 milliseconds = 1000000 nano;
+	// 这就是注释里说的 “giving pseudo-milliseconds” ,ts 近似等于 1毫秒
 	ts := time.Now().UnixNano() >> 20
 
 	if ts < f.lastTimestamp {
@@ -56,7 +58,8 @@ func (f *guidFactory) NewGUID(workerID int64) (guid, error) {
 	}
 
 	f.lastTimestamp = ts
-
+	// id = [ 37位ts + ?位 workerId + 12位 sequence ]
+	// workerid 必须 小于 1024, 也就是10位; 而这个是靠启动nsqd的时候检查配置项实现的
 	id := guid(((ts - twepoch) << timestampShift) |
 		(workerID << workerIDShift) |
 		f.sequence)
