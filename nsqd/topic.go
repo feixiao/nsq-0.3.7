@@ -334,9 +334,11 @@ func (t *Topic) messagePump() {
 				chanMsg.deferred = msg.deferred
 			}
 			if chanMsg.deferred != 0 {
+				// 延迟发送的消息
 				channel.StartDeferredTimeout(chanMsg, chanMsg.deferred)
 				continue
 			}
+			// 立即发送的消息
 			err := channel.PutMessage(chanMsg)
 			if err != nil {
 				t.ctx.nsqd.logf(
