@@ -219,7 +219,7 @@ func (p *protocolV2) Exec(client *clientV2, params [][]byte) ([]byte, error) {
 	return nil, protocol.NewFatalClientErr(nil, "E_INVALID", fmt.Sprintf("invalid command %s", params[0]))
 }
 
-// 消息泵
+// 消息泵,每个客户端连接对象都会启动
 func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 	var err error
 	var buf bytes.Buffer
@@ -330,6 +330,7 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 				goto exit
 			}
 		case msg, ok := <-clientMsgChan:
+			// 因为每个客户端都启动了goroutine,然后select其关联的Channel
 			// 会有N个消费者共同监听channel.clientMsgChan,一条消息只能被一个消费者抢到
 			if !ok {
 				goto exit
@@ -342,9 +343,9 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 			// 说明消息以被消费者成功处理，会将该消息从堆中删除
 
 			// 如果超过一定时间没有接受 FIN messageId，会从堆中取出该消息重新发送，所以nsq能确保一个消息至少被一个i消费处理。
-			subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)
-			client.SendingMessage()
-			err = p.SendMessage(client, msg, &buf)
+			subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)	// 添加到队列
+			client.SendingMessage()						// 消息统计
+			err = p.SendMessage(client, msg, &buf)				// 发送到网络
 			if err != nil {
 				goto exit
 			}
@@ -668,7 +669,9 @@ func (p *protocolV2) SUB(client *clientV2, params [][]byte) ([]byte, error) {
 	client.Channel = channel
 
 	// update message pump
-	client.SubEventChan <- channel // 触发SubEvent，处理的逻辑是将SubEventChan设置为nil
+	// 触发SubEvent，处理的逻辑是将SubEventChan设置为nil(也就是说不支持这个客户端改变Channel了)
+	// 同时messagePump中的subChannel知道引用哪个Channel了
+	client.SubEventChan <- channel
 
 	return okBytes, nil
 }

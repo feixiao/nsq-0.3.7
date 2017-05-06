@@ -228,7 +228,7 @@ func (c *Channel) Empty() error {
 			}
 		case <-c.memoryMsgChan: // 清理完memoryMsgChan中的数据
 		default:
-			goto finish // 上面两个通道全部被清理完之后就退出
+			goto finish 	// 上面两个通道全部被清理完之后就退出
 		}
 	}
 
@@ -480,7 +480,8 @@ func (c *Channel) StartInFlightTimeout(msg *Message, clientID int64, timeout tim
 	return nil
 }
 
-// 如果timeout大于0，则调用StartDeferredTimeout进行延迟投递。首先计算延迟投递的时间点，然后调用pushDeferredMessage将消息加入deferredMessage字典，最后将消息放入deferredPQ队列。
+// 如果timeout大于0，则调用StartDeferredTimeout进行延迟投递。首先计算延迟投递的时间点，
+// 然后调用pushDeferredMessage将消息加入deferredMessage字典，最后将消息放入deferredPQ队列。
 // 延迟投递的消息会被专门的worker扫描并在延迟投递的时间点后进行投递。需要注意的是，立即重新投递的消息不会进入deferredPQ队列。
 func (c *Channel) StartDeferredTimeout(msg *Message, timeout time.Duration) error {
 	absTs := time.Now().Add(timeout).UnixNano()
