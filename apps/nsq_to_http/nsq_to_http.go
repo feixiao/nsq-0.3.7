@@ -22,8 +22,8 @@ import (
 	"github.com/bitly/go-hostpool"
 	"github.com/bitly/timer_metrics"
 	"github.com/nsqio/go-nsq"
-	"github.com/nsqio/nsq/internal/app"
-	"github.com/nsqio/nsq/internal/version"
+	"github.com/feixiao/nsq-0.3.7/internal/app"
+	"github.com/feixiao/nsq-0.3.7/internal/version"
 )
 
 const (

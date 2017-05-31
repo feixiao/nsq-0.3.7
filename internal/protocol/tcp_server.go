@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/nsqio/nsq/internal/app"
+	"github.com/feixiao/nsq-0.3.7/internal/app"
 )
 
 // TCP长连接的处理只需要实现Handle即可

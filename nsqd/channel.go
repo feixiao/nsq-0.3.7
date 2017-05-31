@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/nsqio/nsq/internal/pqueue"
-	"github.com/nsqio/nsq/internal/quantile"
+	"github.com/feixiao/nsq-0.3.7/internal/pqueue"
+	"github.com/feixiao/nsq-0.3.7/internal/quantile"
 )
 
 // Consumer接口，定义消费者行为

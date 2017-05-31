@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/nsqio/nsq/internal/app"
+	"github.com/feixiao/nsq-0.3.7/internal/app"
 )
 
 // 定义log输出接口

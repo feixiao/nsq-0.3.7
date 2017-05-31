@@ -11,8 +11,8 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/judwhite/go-svc/svc"	// 后台程序
 	"github.com/mreiferson/go-options"
-	"github.com/nsqio/nsq/internal/version"
-	"github.com/nsqio/nsq/nsqlookupd"
+	"github.com/feixiao/nsq-0.3.7/internal/version"
+	"github.com/feixiao/nsq-0.3.7/nsqlookupd"
 )
 
 // 参数解析

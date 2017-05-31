@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/nsqio/nsq/internal/http_api"
-	"github.com/nsqio/nsq/nsqlookupd"
+	"github.com/feixiao/nsq-0.3.7/internal/http_api"
+	"github.com/feixiao/nsq-0.3.7/nsqlookupd"
 )
 
 func assert(t *testing.T, condition bool, msg string, v ...interface{}) {

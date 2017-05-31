@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nsqio/nsq/internal/version"
+	"github.com/feixiao/nsq-0.3.7/internal/version"
+	"github.com/nsqio/go-nsq"
 )
 
 // 连接成功之后调用

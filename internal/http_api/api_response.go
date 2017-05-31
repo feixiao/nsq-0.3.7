@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/nsqio/nsq/internal/app"
+	"github.com/feixiao/nsq-0.3.7/internal/app"
 )
 
 // 函数对象定义：入参和出参都是APIHandler

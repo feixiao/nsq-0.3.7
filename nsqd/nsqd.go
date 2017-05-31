@@ -16,14 +16,15 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	simplejson "github.com/bitly/go-simplejson"
 
-	"github.com/nsqio/nsq/internal/clusterinfo"
-	"github.com/nsqio/nsq/internal/dirlock"
-	"github.com/nsqio/nsq/internal/http_api"
-	"github.com/nsqio/nsq/internal/protocol"
-	"github.com/nsqio/nsq/internal/statsd"
-	"github.com/nsqio/nsq/internal/util"
-	"github.com/nsqio/nsq/internal/version"
+	"github.com/feixiao/nsq-0.3.7/internal/clusterinfo"
+	"github.com/feixiao/nsq-0.3.7/internal/dirlock"
+	"github.com/feixiao/nsq-0.3.7/internal/http_api"
+	"github.com/feixiao/nsq-0.3.7/internal/protocol"
+	"github.com/feixiao/nsq-0.3.7/internal/statsd"
+	"github.com/feixiao/nsq-0.3.7/internal/util"
+	"github.com/feixiao/nsq-0.3.7/internal/version"
 )
 
 const (

@@ -11,8 +11,8 @@ import (
 
 	"github.com/bitly/go-simplejson"
 	"github.com/nsqio/go-nsq"
-	"github.com/nsqio/nsq/internal/clusterinfo"
-	"github.com/nsqio/nsq/internal/http_api"
+	"github.com/feixiao/nsq-0.3.7/internal/clusterinfo"
+	"github.com/feixiao/nsq-0.3.7/internal/http_api"
 )
 
 func equal(t *testing.T, act, exp interface{}) {

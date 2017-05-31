@@ -10,8 +10,8 @@
 <p align="center">
 <img align="left" width="175" src="http://nsq.io/static/img/nsq_blue.png">
 <ul>
-<li><strong>Source</strong>: https://github.com/nsqio/nsq
-<li><strong>Issues</strong>: https://github.com/nsqio/nsq/issues
+<li><strong>Source</strong>: https://github.com/feixiao/nsq-0.3.7
+<li><strong>Issues</strong>: https://github.com/feixiao/nsq-0.3.7/issues
 <li><strong>Mailing List</strong>: <a href="https://groups.google.com/d/forum/nsq-users">nsq-users@googlegroups.com</a>
 <li><strong>IRC</strong>: #nsq on freenode
 <li><strong>Docs</strong>: http://nsq.io

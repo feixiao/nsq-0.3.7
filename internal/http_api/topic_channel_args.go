@@ -3,7 +3,7 @@ package http_api
 import (
 	"errors"
 
-	"github.com/nsqio/nsq/internal/protocol"
+	"github.com/feixiao/nsq-0.3.7/internal/protocol"
 )
 
 // 定义getter接口

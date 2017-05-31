@@ -365,7 +365,7 @@ client certificate policy via `--tls-client-auth-policy` (`require` or `require-
 This can be used as a form of client authentication.
 
 Additionally, `nsqd` is now structured such that it is importable in other Go applications
-via `github.com/nsqio/nsq/nsqd`, thanks to @kzvezdarov.
+via `github.com/feixiao/nsq-0.3.7/nsqd`, thanks to @kzvezdarov.
 
 Finally, thanks to @paddyforan, `nsq_to_file` can now archive *multiple* topics or
 optionally archive *all* discovered topics (by specifying no `--topic` params
@@ -376,7 +376,7 @@ New Features / Enhancements:
  * #334 - `nsq_to_file` can archive many topics (thanks @paddyforan)
  * #327 - add `nsqd` TLS client certificate verification policy, ability
           to require TLS, and HTTPS support (thanks @chrisroberts)
- * #325 - make `nsqd` importable (`github.com/nsqio/nsq/nsqd`) (thanks @kzvezdarov)
+ * #325 - make `nsqd` importable (`github.com/feixiao/nsq-0.3.7/nsqd`) (thanks @kzvezdarov)
  * #321 - improve `IDENTIFY` options (replace `short_id` and `long_id` with
           `client_id` and `hostname`)
  * #319 - allow path separator in `nsq_to_file` filenames (thanks @jsocol)
@@ -501,7 +501,7 @@ New Features / Enhancements:
 **Upgrading from 0.2.22**: No backwards incompatible changes.
 
 We now use [godep](https://github.com/kr/godep) in order to achieve reproducible builds with pinned
-dependencies.  If you're on go1.1+ you can now just use `godep get github.com/nsqio/nsq/...`.
+dependencies.  If you're on go1.1+ you can now just use `godep get github.com/feixiao/nsq-0.3.7/...`.
 
 This release includes `nsqd` protocol compression feature negotiation.
 [Snappy](https://code.google.com/p/snappy/) and [Deflate](http://en.wikipedia.org/wiki/DEFLATE) are

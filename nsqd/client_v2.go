@@ -9,8 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/nsqio/nsq/internal/auth"
+	snappystream "github.com/mreiferson/go-snappystream"
+	"github.com/feixiao/nsq-0.3.7/internal/auth"
 )
 
 const defaultBufferSize = 16 * 1024
